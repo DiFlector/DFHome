@@ -12,16 +12,30 @@ class SettingsView(BaseModel):
     """What we return to the frontend: masked tokens + presence flags."""
 
     has_oauth_token: bool
-    has_quasar_cookie: bool
-    has_quasar_csrf_token: bool
+    has_quasar_x_token: bool
     oauth_token_preview: str | None = None
-    quasar_cookie_preview: str | None = None
+    quasar_x_token_preview: str | None = None
 
 
 class SettingsUpdate(BaseModel):
     yandex_oauth_token: str | None = None
-    quasar_cookie: str | None = None
-    quasar_csrf_token: str | None = None
+    # Advanced/fallback: paste an x_token obtained elsewhere directly. Most
+    # users should use POST /settings/quasar-login instead (see below).
+    quasar_x_token: str | None = None
+
+
+class QuasarLoginRequest(BaseModel):
+    """Raw `key=value; key2=value2` cookie string copied from DevTools while
+    logged into yandex.ru. Exchanged once for a durable x_token; the cookie
+    string itself is never stored."""
+
+    cookies: str
+
+
+class QuasarLoginResult(BaseModel):
+    ok: bool
+    display_login: str | None = None
+    error: str | None = None
 
 
 class ConnectionTestResult(BaseModel):
@@ -116,11 +130,13 @@ class ScenarioTrigger(BaseModel):
     kind: Literal["voice_phrase", "device_property", "schedule"]
     # voice_phrase
     phrase: str | None = None
-    # device_property
+    # device_property. Yandex's condition schema for float sensors only
+    # supports {"lower_bound": x} / {"upper_bound": x} (confirmed against a
+    # real scenario's raw edit response) — no eq/gte/lte, hence just gt/lt.
     device_id: str | None = None
     property_type: str | None = None
     property_instance: str | None = None
-    operator: Literal["eq", "gt", "lt", "gte", "lte"] | None = None
+    operator: Literal["gt", "lt"] | None = None
     value: Any = None
     # schedule
     cron: str | None = None

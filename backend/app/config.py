@@ -16,8 +16,11 @@ class Settings(BaseSettings):
     # Optional seed values. Only used to pre-populate the database on first
     # boot; after that, the Settings page / API is the source of truth.
     yandex_oauth_token: str | None = None
-    quasar_cookie: str | None = None
-    quasar_csrf_token: str | None = None
+    # Durable secret for the unofficial quasar API, obtained once by exchanging
+    # a pasted browser cookie (see routers/settings.py quasar-login endpoint).
+    # Short-lived session cookies/CSRF are derived from this at runtime and
+    # are never persisted (see yandex/quasar_session.py).
+    quasar_x_token: str | None = None
 
     # CORS origins allowed to talk to the API directly (useful for local dev
     # of the frontend outside docker-compose).

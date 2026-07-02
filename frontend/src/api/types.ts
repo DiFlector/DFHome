@@ -55,16 +55,20 @@ export interface HomeView {
 
 export interface SettingsView {
   has_oauth_token: boolean;
-  has_quasar_cookie: boolean;
-  has_quasar_csrf_token: boolean;
+  has_quasar_x_token: boolean;
   oauth_token_preview?: string | null;
-  quasar_cookie_preview?: string | null;
+  quasar_x_token_preview?: string | null;
 }
 
 export interface SettingsUpdate {
   yandex_oauth_token?: string | null;
-  quasar_cookie?: string | null;
-  quasar_csrf_token?: string | null;
+  quasar_x_token?: string | null;
+}
+
+export interface QuasarLoginResult {
+  ok: boolean;
+  display_login?: string | null;
+  error?: string | null;
 }
 
 export interface ConnectionTestResult {
@@ -82,7 +86,7 @@ export interface ScenarioTrigger {
   device_id?: string | null;
   property_type?: string | null;
   property_instance?: string | null;
-  operator?: "eq" | "gt" | "lt" | "gte" | "lte" | null;
+  operator?: "gt" | "lt" | null;
   value?: unknown;
   cron?: string | null;
   time_of_day?: string | null;

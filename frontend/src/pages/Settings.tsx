@@ -7,29 +7,38 @@ export default function Settings() {
   const { data, isLoading } = useQuery({ queryKey: ["settings"], queryFn: endpoints.getSettings });
 
   const [oauthToken, setOauthToken] = useState("");
-  const [quasarCookie, setQuasarCookie] = useState("");
-  const [quasarCsrf, setQuasarCsrf] = useState("");
+  const [quasarCookies, setQuasarCookies] = useState("");
 
-  const saveMutation = useMutation({
+  const saveOauthMutation = useMutation({
     mutationFn: endpoints.updateSettings,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["settings"] });
       setOauthToken("");
-      setQuasarCookie("");
-      setQuasarCsrf("");
+    },
+  });
+
+  const quasarLoginMutation = useMutation({
+    mutationFn: endpoints.quasarLogin,
+    onSuccess: (result) => {
+      if (result.ok) {
+        queryClient.invalidateQueries({ queryKey: ["settings"] });
+        setQuasarCookies("");
+      }
     },
   });
 
   const testMutation = useMutation({ mutationFn: endpoints.testConnection });
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSaveOauth = (e: React.FormEvent) => {
     e.preventDefault();
-    const update: Record<string, string> = {};
-    if (oauthToken.trim()) update.yandex_oauth_token = oauthToken.trim();
-    if (quasarCookie.trim()) update.quasar_cookie = quasarCookie.trim();
-    if (quasarCsrf.trim()) update.quasar_csrf_token = quasarCsrf.trim();
-    if (Object.keys(update).length === 0) return;
-    saveMutation.mutate(update);
+    if (!oauthToken.trim()) return;
+    saveOauthMutation.mutate({ yandex_oauth_token: oauthToken.trim() });
+  };
+
+  const handleQuasarLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quasarCookies.trim()) return;
+    quasarLoginMutation.mutate(quasarCookies.trim());
   };
 
   return (
@@ -42,11 +51,12 @@ export default function Settings() {
         <div className="banner info">
           OAuth-токен: {data.has_oauth_token ? `настроен (${data.oauth_token_preview})` : "не настроен"}
           <br />
-          Quasar cookie: {data.has_quasar_cookie ? `настроен (${data.quasar_cookie_preview})` : "не настроен"}
+          Вход для сценариев: {data.has_quasar_x_token ? "выполнен" : "не выполнен"}
         </div>
       )}
 
-      <form onSubmit={handleSave}>
+      <h3>1. OAuth-токен (устройства, управление, запуск сценариев)</h3>
+      <form onSubmit={handleSaveOauth}>
         <div className="form-field">
           <label>OAuth-токен (api.iot.yandex.net)</label>
           <input
@@ -60,42 +70,54 @@ export default function Settings() {
             <a href="https://oauth.yandex.ru/" target="_blank" rel="noreferrer">
               oauth.yandex.ru
             </a>{" "}
-            со scope iot:view + iot:control. Нужен для просмотра и управления устройствами, а
-            также запуска сценариев.
+            со scope iot:view + iot:control.
           </small>
         </div>
-
-        <div className="form-field">
-          <label>Quasar Cookie (iot.quasar.yandex.ru)</label>
-          <textarea
-            rows={3}
-            placeholder="Session_id=...; sessionid2=...; yandexuid=..."
-            value={quasarCookie}
-            onChange={(e) => setQuasarCookie(e.target.value)}
-          />
-          <small>
-            Скопируйте из DevTools → Network → любой запрос к iot.quasar.yandex.ru → заголовок
-            Cookie. Нужен только для создания/редактирования сценариев.
-          </small>
-        </div>
-
-        <div className="form-field">
-          <label>Quasar CSRF-токен (опционально)</label>
-          <input
-            type="text"
-            placeholder="x-csrf-token"
-            value={quasarCsrf}
-            onChange={(e) => setQuasarCsrf(e.target.value)}
-          />
-        </div>
-
-        <button className="primary" type="submit" disabled={saveMutation.isPending}>
-          Сохранить
+        <button className="primary" type="submit" disabled={saveOauthMutation.isPending}>
+          Сохранить токен
         </button>
+        {saveOauthMutation.isError && (
+          <div className="banner error">{apiErrorMessage(saveOauthMutation.error)}</div>
+        )}
+        {saveOauthMutation.isSuccess && <div className="banner success">Сохранено</div>}
       </form>
 
-      {saveMutation.isError && <div className="banner error">{apiErrorMessage(saveMutation.error)}</div>}
-      {saveMutation.isSuccess && <div className="banner success">Сохранено</div>}
+      <h3 style={{ marginTop: 32 }}>2. Вход для сценариев (создание/редактирование)</h3>
+      <div className="banner info">
+        Официальный API не поддерживает создание и редактирование сценариев, поэтому для этого
+        приложение один раз обменивает вашу браузерную сессию на долгоживущий токен и дальше само
+        обновляет служебные cookie — повторно ничего вставлять не нужно.
+      </div>
+      <form onSubmit={handleQuasarLogin}>
+        <div className="form-field">
+          <label>Cookie сессии yandex.ru</label>
+          <textarea
+            rows={3}
+            placeholder="Session_id=...; yandexuid=...; ..."
+            value={quasarCookies}
+            onChange={(e) => setQuasarCookies(e.target.value)}
+          />
+          <small>
+            1. Откройте <code>yandex.ru</code> в браузере, войдите в аккаунт. 2. DevTools (F12) →
+            Network → любой запрос к <code>yandex.ru</code> → заголовок запроса{" "}
+            <code>Cookie</code> → скопируйте значение целиком. 3. Вставьте сюда и нажмите «Войти».
+          </small>
+        </div>
+        <button className="primary" type="submit" disabled={quasarLoginMutation.isPending}>
+          Войти
+        </button>
+        {quasarLoginMutation.data && !quasarLoginMutation.data.ok && (
+          <div className="banner error">{quasarLoginMutation.data.error}</div>
+        )}
+        {quasarLoginMutation.data?.ok && (
+          <div className="banner success">
+            Успешно вошли{quasarLoginMutation.data.display_login ? ` как ${quasarLoginMutation.data.display_login}` : ""}
+          </div>
+        )}
+        {quasarLoginMutation.isError && (
+          <div className="banner error">{apiErrorMessage(quasarLoginMutation.error)}</div>
+        )}
+      </form>
 
       <div style={{ marginTop: 24 }}>
         <button className="secondary" onClick={() => testMutation.mutate()} disabled={testMutation.isPending}>

@@ -1,4 +1,25 @@
-import type { DeviceView, ScenarioAction, ScenarioTrigger, TriggerKind } from "../api/types";
+import type { ControlSpec, DeviceView, ScenarioAction, ScenarioTrigger, TriggerKind } from "../api/types";
+import ColorControl from "./controls/ColorControl";
+import ModeSelect from "./controls/ModeSelect";
+import SliderControl from "./controls/SliderControl";
+import SwitchControl from "./controls/SwitchControl";
+
+// Sensible default so a freshly-picked capability always has a
+// correctly-typed value instead of `undefined`/a leftover string.
+function defaultValueFor(control: ControlSpec): unknown {
+  switch (control.kind) {
+    case "switch":
+      return false;
+    case "slider":
+      return control.min ?? 0;
+    case "mode":
+      return control.options?.[0] ?? "";
+    case "color":
+      return control.color_model === "temperature_k" ? 4500 : { h: 0, s: 0, v: 100 };
+    default:
+      return "";
+  }
+}
 
 // -- Triggers ---------------------------------------------------------------
 
@@ -17,6 +38,7 @@ const TRIGGER_KINDS: { value: TriggerKind; label: string }[] = [
 
 export function TriggerEditor({ trigger, devices, onChange, onRemove }: TriggerEditorProps) {
   const set = (patch: Partial<ScenarioTrigger>) => onChange({ ...trigger, ...patch });
+  const selectedDevice = devices.find((d) => d.id === trigger.device_id);
 
   return (
     <div className="trigger-block">
@@ -50,7 +72,12 @@ export function TriggerEditor({ trigger, devices, onChange, onRemove }: TriggerE
         <>
           <div className="form-field">
             <label>Устройство</label>
-            <select value={trigger.device_id ?? ""} onChange={(e) => set({ device_id: e.target.value })}>
+            <select
+              value={trigger.device_id ?? ""}
+              onChange={(e) =>
+                set({ device_id: e.target.value, property_type: "", property_instance: "" })
+              }
+            >
               <option value="">— выберите —</option>
               {devices.map((d) => (
                 <option key={d.id} value={d.id}>
@@ -59,24 +86,41 @@ export function TriggerEditor({ trigger, devices, onChange, onRemove }: TriggerE
               ))}
             </select>
           </div>
-          <div className="form-field">
-            <label>Свойство (instance)</label>
-            <input
-              type="text"
-              placeholder="temperature"
-              value={trigger.property_instance ?? ""}
-              onChange={(e) => set({ property_instance: e.target.value })}
-            />
-          </div>
+          {selectedDevice && (
+            <div className="form-field">
+              <label>Свойство</label>
+              <select
+                value={`${trigger.property_type ?? ""}:${trigger.property_instance ?? ""}`}
+                onChange={(e) => {
+                  const [property_type, property_instance] = e.target.value.split(":");
+                  set({ property_type, property_instance });
+                }}
+              >
+                <option value=":">— выберите —</option>
+                {selectedDevice.properties.map((p) => (
+                  <option
+                    key={`${p.property_type}:${p.instance}`}
+                    value={`${p.property_type}:${p.instance}`}
+                  >
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+              {selectedDevice.properties.length === 0 && (
+                <small>У этого устройства нет измеряемых свойств (датчиков).</small>
+              )}
+            </div>
+          )}
           <div className="form-field">
             <label>Условие</label>
-            <select value={trigger.operator ?? "eq"} onChange={(e) => set({ operator: e.target.value as ScenarioTrigger["operator"] })}>
-              <option value="eq">равно</option>
+            <select
+              value={trigger.operator ?? "gt"}
+              onChange={(e) => set({ operator: e.target.value as ScenarioTrigger["operator"] })}
+            >
               <option value="gt">больше</option>
-              <option value="gte">больше или равно</option>
               <option value="lt">меньше</option>
-              <option value="lte">меньше или равно</option>
             </select>
+            <small>Яндекс поддерживает только «больше»/«меньше» для датчиков.</small>
           </div>
           <div className="form-field">
             <label>Значение</label>
@@ -115,6 +159,9 @@ interface ActionEditorProps {
 export function ActionEditor({ action, devices, onChange, onRemove }: ActionEditorProps) {
   const set = (patch: Partial<ScenarioAction>) => onChange({ ...action, ...patch });
   const selectedDevice = devices.find((d) => d.id === action.device_id);
+  const selectedControl = selectedDevice?.controls.find(
+    (c) => c.capability_type === action.capability_type && c.instance === action.instance,
+  );
 
   return (
     <div className="action-block">
@@ -153,7 +200,10 @@ export function ActionEditor({ action, devices, onChange, onRemove }: ActionEdit
                 value={`${action.capability_type ?? ""}:${action.instance ?? ""}`}
                 onChange={(e) => {
                   const [capability_type, instance] = e.target.value.split(":");
-                  set({ capability_type, instance });
+                  const control = selectedDevice.controls.find(
+                    (c) => c.capability_type === capability_type && c.instance === instance,
+                  );
+                  set({ capability_type, instance, value: control ? defaultValueFor(control) : "" });
                 }}
               >
                 <option value=":">— выберите —</option>
@@ -165,28 +215,72 @@ export function ActionEditor({ action, devices, onChange, onRemove }: ActionEdit
               </select>
             </div>
           )}
-          <div className="form-field">
-            <label>Значение</label>
-            <input
-              type="text"
-              placeholder="true / 50 / eco"
-              value={String(action.value ?? "")}
-              onChange={(e) => set({ value: e.target.value })}
-            />
-          </div>
+
+          {selectedControl && (
+            <div className="form-field">
+              <label>Значение</label>
+              {selectedControl.kind === "switch" && (
+                <SwitchControl checked={Boolean(action.value)} onChange={(value) => set({ value })} />
+              )}
+              {selectedControl.kind === "slider" && (
+                <SliderControl
+                  value={Number(action.value) || 0}
+                  min={selectedControl.min ?? 0}
+                  max={selectedControl.max ?? 100}
+                  step={selectedControl.precision ?? 1}
+                  unit={selectedControl.unit}
+                  onChange={(value) => set({ value })}
+                />
+              )}
+              {selectedControl.kind === "mode" && (
+                <ModeSelect
+                  value={String(action.value ?? "")}
+                  options={selectedControl.options ?? []}
+                  onChange={(value) => set({ value })}
+                />
+              )}
+              {selectedControl.kind === "color" && (
+                <ColorControl
+                  value={action.value}
+                  colorModel={selectedControl.color_model}
+                  onChange={(value) => set({ value })}
+                />
+              )}
+              {selectedControl.kind === "unsupported" && (
+                <input
+                  type="text"
+                  value={String(action.value ?? "")}
+                  onChange={(e) => set({ value: e.target.value })}
+                />
+              )}
+            </div>
+          )}
         </>
       )}
 
       {action.kind === "tts" && (
-        <div className="form-field">
-          <label>Текст фразы</label>
-          <input
-            type="text"
-            placeholder="Добрый вечер!"
-            value={action.text ?? ""}
-            onChange={(e) => set({ text: e.target.value })}
-          />
-        </div>
+        <>
+          <div className="form-field">
+            <label>Колонка (устройство с Алисой)</label>
+            <select value={action.device_id ?? ""} onChange={(e) => set({ device_id: e.target.value })}>
+              <option value="">— выберите —</option>
+              {devices.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="form-field">
+            <label>Текст фразы</label>
+            <input
+              type="text"
+              placeholder="Добрый вечер!"
+              value={action.text ?? ""}
+              onChange={(e) => set({ text: e.target.value })}
+            />
+          </div>
+        </>
       )}
 
       {action.kind === "run_scenario" && (

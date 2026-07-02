@@ -9,7 +9,7 @@ import aiosqlite
 
 from app.config import settings
 
-_KEYS = ("yandex_oauth_token", "quasar_cookie", "quasar_csrf_token")
+_KEYS = ("yandex_oauth_token", "quasar_x_token")
 
 _lock = asyncio.Lock()
 _initialized = False

@@ -48,11 +48,23 @@ export default function ScenarioForm() {
     onSuccess: () => navigate("/scenarios"),
   });
 
+  // The device-property trigger's "value" field is a plain text input (we
+  // don't know the property's real type ahead of time), so coerce it to a
+  // number/boolean where it obviously looks like one instead of always
+  // sending a string that Yandex's schema validation will reject.
+  const coerceTriggerValue = (trigger: ScenarioTrigger): ScenarioTrigger => {
+    if (trigger.kind !== "device_property" || typeof trigger.value !== "string") return trigger;
+    const raw = trigger.value.trim();
+    if (raw === "true" || raw === "false") return { ...trigger, value: raw === "true" };
+    if (raw !== "" && !Number.isNaN(Number(raw))) return { ...trigger, value: Number(raw) };
+    return trigger;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const payload: ScenarioPayload = {
       name,
-      triggers: triggers.map(({ _key, ...t }) => t),
+      triggers: triggers.map(({ _key, ...t }) => coerceTriggerValue(t)),
       actions: actions.map(({ _key, ...a }) => a),
     };
     saveMutation.mutate(payload);

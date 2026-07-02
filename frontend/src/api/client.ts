@@ -3,6 +3,7 @@ import type {
   ConnectionTestResult,
   DeviceView,
   HomeView,
+  QuasarLoginResult,
   ScenarioDetail,
   ScenarioPayload,
   ScenarioSummary,
@@ -54,6 +55,9 @@ export const endpoints = {
 
   updateSettings: (update: SettingsUpdate) =>
     api.put<SettingsView>("/settings", update).then((r) => r.data),
+
+  quasarLogin: (cookies: string) =>
+    api.post<QuasarLoginResult>("/settings/quasar-login", { cookies }).then((r) => r.data),
 
   testConnection: () =>
     api.post<ConnectionTestResult>("/settings/test-connection").then((r) => r.data),
