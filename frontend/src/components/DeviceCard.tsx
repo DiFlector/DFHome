@@ -6,6 +6,7 @@ import ColorControl from "./controls/ColorControl";
 import ModeSelect from "./controls/ModeSelect";
 import SliderControl from "./controls/SliderControl";
 import SwitchControl from "./controls/SwitchControl";
+import { deviceTypeIcon } from "./icons";
 
 interface Props {
   device: DeviceView;
@@ -65,23 +66,31 @@ export default function DeviceCard({ device }: Props) {
           <ColorControl
             value={control.value}
             colorModel={control.color_model}
+            min={control.min}
+            max={control.max}
             disabled={disabled}
             onChange={(value) => mutation.mutate({ control, value })}
           />
         );
       default:
-        return <span style={{ fontSize: 12, color: "#aaa" }}>не поддерживается</span>;
+        return <span style={{ fontSize: 12, color: "var(--text-muted)" }}>не поддерживается</span>;
     }
   };
 
   return (
     <div className="card">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
-        <div>
-          <h3>
-            <Link to={`/devices/${device.id}`}>{device.name}</Link>
-          </h3>
-          <div className="subtitle">{device.type.replace("devices.types.", "")}</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+        <div style={{ display: "flex", gap: 12, minWidth: 0 }}>
+          <span className="icon-badge">{deviceTypeIcon(device.type, { width: 18, height: 18 })}</span>
+          <div style={{ minWidth: 0 }}>
+            <h3>
+              <Link to={`/devices/${device.id}`}>{device.name}</Link>
+            </h3>
+            <div className="subtitle" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span className={`status-dot${device.online ? "" : " offline"}`} />
+              {device.type.replace("devices.types.", "")}
+            </div>
+          </div>
         </div>
         {!device.online && <span className="offline-badge">офлайн</span>}
       </div>

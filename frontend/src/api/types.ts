@@ -115,3 +115,70 @@ export interface ScenarioPayload {
 export interface ScenarioDetail extends ScenarioPayload {
   id: string;
 }
+
+// -- Floor plan ---------------------------------------------------------
+
+export interface PlanRoom {
+  room_id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface PlanDevicePosition {
+  device_id: string;
+  x: number;
+  y: number;
+}
+
+export interface PlanLayout {
+  rooms: PlanRoom[];
+  devices: PlanDevicePosition[];
+}
+
+// -- Widgets --------------------------------------------------------------
+
+export interface WeatherWidget {
+  id: string;
+  kind: "weather";
+  query: string;
+}
+
+export interface RoomSensorWidget {
+  id: string;
+  kind: "room_sensor";
+  device_id: string;
+  device_name: string;
+  property_instance: string;
+  label: string;
+}
+
+export interface SensorChartWidget {
+  id: string;
+  kind: "sensor_chart";
+  device_id: string;
+  device_name: string;
+  property_instance: string;
+  label: string;
+  unit?: string | null;
+}
+
+export type Widget = WeatherWidget | RoomSensorWidget | SensorChartWidget;
+
+export interface HistoryPoint {
+  ts: number;
+  value: number;
+}
+
+export type DeviceHistory = Record<string, HistoryPoint[]>;
+
+export interface WeatherData {
+  city: string;
+  lat: number;
+  lon: number;
+  temperature: number | null;
+  humidity: number | null;
+  wind_speed: number | null;
+  weather_code: number | null;
+}

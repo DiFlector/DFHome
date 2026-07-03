@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { apiErrorMessage, endpoints } from "../api/client";
+import { EditIcon, FlowIcon, PlayIcon, PlusIcon, TrashIcon } from "../components/icons";
 
 export default function Scenarios() {
   const queryClient = useQueryClient();
@@ -20,10 +21,12 @@ export default function Scenarios() {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h2 style={{ marginTop: 0 }}>Сценарии</h2>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <h2 style={{ margin: 0 }}>Сценарии</h2>
         <Link to="/scenarios/new">
-          <button className="primary">+ Новый сценарий</button>
+          <button className="primary" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <PlusIcon width={16} height={16} /> Новый сценарий
+          </button>
         </Link>
       </div>
 
@@ -41,17 +44,26 @@ export default function Scenarios() {
 
       {data?.map((scenario) => (
         <div className="scenario-row" key={scenario.id}>
-          <span>{scenario.name}</span>
+          <span>
+            <span className="icon-badge" style={{ width: 32, height: 32, flexShrink: 0 }}>
+              <FlowIcon width={15} height={15} />
+            </span>
+            <span className="scenario-name">{scenario.name}</span>
+          </span>
           <div className="actions">
             <button
               className="secondary"
               disabled={runMutation.isPending}
               onClick={() => runMutation.mutate(scenario.id)}
+              title="Запустить"
+              aria-label="Запустить"
             >
-              Запустить
+              <PlayIcon width={15} height={15} />
             </button>
             <Link to={`/scenarios/${scenario.id}/edit`}>
-              <button className="secondary">Изменить</button>
+              <button className="secondary" title="Изменить" aria-label="Изменить">
+                <EditIcon width={15} height={15} />
+              </button>
             </Link>
             <button
               className="danger"
@@ -61,8 +73,10 @@ export default function Scenarios() {
                   deleteMutation.mutate(scenario.id);
                 }
               }}
+              title="Удалить"
+              aria-label="Удалить"
             >
-              Удалить
+              <TrashIcon width={15} height={15} />
             </button>
           </div>
         </div>

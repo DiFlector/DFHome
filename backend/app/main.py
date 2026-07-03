@@ -1,16 +1,36 @@
+import asyncio
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app import history
 from app.config import settings
-from app.routers import devices, home, scenarios, settings as settings_router
+from app.routers import (
+    devices,
+    history as history_router,
+    home,
+    plan,
+    scenarios,
+    settings as settings_router,
+    weather,
+    widgets,
+)
 from app.yandex.errors import NotAuthenticatedError, UpstreamAuthError, YandexApiError
 
 _LOGGER = logging.getLogger(__name__)
 
-app = FastAPI(title="DFHome", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    sampler = asyncio.create_task(history.sampler_loop())
+    yield
+    sampler.cancel()
+
+
+app = FastAPI(title="DFHome", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -57,3 +77,7 @@ app.include_router(settings_router.router)
 app.include_router(home.router)
 app.include_router(devices.router)
 app.include_router(scenarios.router)
+app.include_router(plan.router)
+app.include_router(widgets.router)
+app.include_router(weather.router)
+app.include_router(history_router.router)

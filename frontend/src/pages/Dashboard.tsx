@@ -31,7 +31,7 @@ export default function Dashboard() {
 
   return (
     <div>
-      <h2 style={{ marginTop: 0 }}>Устройства</h2>
+      <h2 style={{ marginTop: 0, marginBottom: 20 }}>Устройства</h2>
       {data.rooms
         .filter((room) => room.devices.length > 0)
         .map((room) => (

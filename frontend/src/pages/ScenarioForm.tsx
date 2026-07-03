@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { apiErrorMessage, endpoints } from "../api/client";
 import type { DeviceView, ScenarioAction, ScenarioPayload, ScenarioTrigger } from "../api/types";
 import { ActionEditor, TriggerEditor } from "../components/ScenarioEditor";
+import { PlusIcon } from "../components/icons";
 
 function allDevices(home?: { rooms: { devices: DeviceView[] }[]; unassigned_devices: DeviceView[] }): DeviceView[] {
   if (!home) return [];
@@ -89,7 +90,9 @@ export default function ScenarioForm() {
           <input type="text" required value={name} onChange={(e) => setName(e.target.value)} />
         </div>
 
-        <h3>Условия запуска</h3>
+        <h3 style={{ fontSize: 15, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          Условия запуска
+        </h3>
         {triggers.map((t) => (
           <TriggerEditor
             key={t._key}
@@ -102,12 +105,23 @@ export default function ScenarioForm() {
         <button
           type="button"
           className="secondary"
+          style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
           onClick={() => setTriggers([...triggers, { kind: "voice_phrase", _key: nextId() }])}
         >
-          + Добавить условие
+          <PlusIcon width={14} height={14} /> Добавить условие
         </button>
 
-        <h3>Действия</h3>
+        <h3
+          style={{
+            fontSize: 15,
+            color: "var(--text-muted)",
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+            marginTop: 28,
+          }}
+        >
+          Действия
+        </h3>
         {actions.map((a) => (
           <ActionEditor
             key={a._key}
@@ -120,9 +134,10 @@ export default function ScenarioForm() {
         <button
           type="button"
           className="secondary"
+          style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
           onClick={() => setActions([...actions, { kind: "device_capability", _key: nextId() }])}
         >
-          + Добавить действие
+          <PlusIcon width={14} height={14} /> Добавить действие
         </button>
 
         <div style={{ marginTop: 24, display: "flex", gap: 12 }}>

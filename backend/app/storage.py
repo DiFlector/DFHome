@@ -9,7 +9,11 @@ import aiosqlite
 
 from app.config import settings
 
-_KEYS = ("yandex_oauth_token", "quasar_x_token")
+_KEYS = ("yandex_oauth_token", "quasar_x_token", "room_order", "plan_layout", "widgets")
+
+# Public list of every stored key — the config export/import endpoints
+# iterate this so a new key added above is picked up automatically.
+ALL_KEYS = _KEYS
 
 _lock = asyncio.Lock()
 _initialized = False

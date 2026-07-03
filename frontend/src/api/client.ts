@@ -1,14 +1,18 @@
 import axios from "axios";
 import type {
   ConnectionTestResult,
+  DeviceHistory,
   DeviceView,
   HomeView,
+  PlanLayout,
   QuasarLoginResult,
   ScenarioDetail,
   ScenarioPayload,
   ScenarioSummary,
   SettingsUpdate,
   SettingsView,
+  WeatherData,
+  Widget,
 } from "./types";
 
 export const api = axios.create({ baseURL: "/api" });
@@ -61,4 +65,23 @@ export const endpoints = {
 
   testConnection: () =>
     api.post<ConnectionTestResult>("/settings/test-connection").then((r) => r.data),
+
+  getPlan: () => api.get<PlanLayout>("/plan").then((r) => r.data),
+
+  savePlan: (plan: PlanLayout) => api.put<PlanLayout>("/plan", plan).then((r) => r.data),
+
+  getWidgets: () => api.get<Widget[]>("/widgets").then((r) => r.data),
+
+  saveWidgets: (widgets: Widget[]) => api.put<Widget[]>("/widgets", widgets).then((r) => r.data),
+
+  getWeather: (query: string) =>
+    api.get<WeatherData>("/weather", { params: { query } }).then((r) => r.data),
+
+  getHistory: (deviceId: string, hours = 12) =>
+    api.get<DeviceHistory>(`/history/${deviceId}`, { params: { hours } }).then((r) => r.data),
+
+  exportConfig: () => api.get<Record<string, unknown>>("/settings/export").then((r) => r.data),
+
+  importConfig: (payload: Record<string, unknown>) =>
+    api.post<{ ok: boolean; imported: string[] }>("/settings/import", payload).then((r) => r.data),
 };

@@ -20,7 +20,7 @@ export default function SliderControl({ value, min, max, step, unit, disabled, o
         disabled={disabled}
         onChange={(e) => onChange(Number(e.target.value))}
       />
-      <span style={{ fontSize: 12, color: "#666", minWidth: 40, textAlign: "right" }}>
+      <span className="slider-value">
         {value}
         {unit || ""}
       </span>

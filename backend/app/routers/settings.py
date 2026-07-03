@@ -1,4 +1,6 @@
-from fastapi import APIRouter
+import json
+
+from fastapi import APIRouter, Body, HTTPException
 
 from app import storage
 from app.models import (
@@ -39,6 +41,53 @@ async def get_settings() -> SettingsView:
 async def update_settings(update: SettingsUpdate) -> SettingsView:
     await storage.set_values(update.model_dump(exclude_unset=True))
     return await get_settings()
+
+
+# Keys whose stored value is itself a JSON document — exported as nested
+# objects (readable file) and re-serialized on import.
+_JSON_KEYS = ("room_order", "plan_layout", "widgets")
+
+
+@router.get("/export")
+async def export_config() -> dict:
+    """Full config dump: tokens, room order, plan layout and widgets.
+
+    Contains secrets in plain text by design — this is the user's own backup
+    to move the app to another machine.
+    """
+    values = await storage.get_all()
+    config: dict = {}
+    for key in storage.ALL_KEYS:
+        value = values.get(key)
+        if value is None:
+            continue
+        config[key] = json.loads(value) if key in _JSON_KEYS else value
+    return {"app": "dfhome", "version": 1, "config": config}
+
+
+@router.post("/import")
+async def import_config(payload: dict = Body(...)) -> dict:
+    config = payload.get("config")
+    if not isinstance(config, dict):
+        raise HTTPException(status_code=400, detail="Неверный формат файла: нет секции config.")
+
+    updates: dict[str, str | None] = {}
+    for key in storage.ALL_KEYS:
+        if key not in config:
+            continue
+        value = config[key]
+        if value is None:
+            updates[key] = None
+        elif isinstance(value, (dict, list)):
+            updates[key] = json.dumps(value)
+        else:
+            updates[key] = str(value)
+
+    if not updates:
+        raise HTTPException(status_code=400, detail="В файле нет ни одного известного поля.")
+
+    await storage.set_values(updates)
+    return {"ok": True, "imported": sorted(updates)}
 
 
 @router.post("/quasar-login", response_model=QuasarLoginResult)

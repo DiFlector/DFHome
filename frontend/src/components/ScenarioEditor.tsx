@@ -243,6 +243,8 @@ export function ActionEditor({ action, devices, onChange, onRemove }: ActionEdit
                 <ColorControl
                   value={action.value}
                   colorModel={selectedControl.color_model}
+                  min={selectedControl.min}
+                  max={selectedControl.max}
                   onChange={(value) => set({ value })}
                 />
               )}

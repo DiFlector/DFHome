@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { apiErrorMessage, endpoints } from "../api/client";
 import DeviceCard from "../components/DeviceCard";
+import { ChevronLeftIcon } from "../components/icons";
 
 export default function DeviceDetail() {
   const { id } = useParams<{ id: string }>();
@@ -14,9 +15,20 @@ export default function DeviceDetail() {
 
   return (
     <div>
-      <p>
-        <Link to="/">&larr; Ко всем устройствам</Link>
-      </p>
+      <Link
+        to="/"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          color: "var(--text-muted)",
+          textDecoration: "none",
+          fontSize: 14,
+          marginBottom: 16,
+        }}
+      >
+        <ChevronLeftIcon width={16} height={16} /> Ко всем устройствам
+      </Link>
       {isLoading && <p className="loading">Загрузка…</p>}
       {error && <div className="banner error">{apiErrorMessage(error)}</div>}
       {data && (

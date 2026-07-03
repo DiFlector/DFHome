@@ -1,4 +1,9 @@
-from app.yandex.normalize import normalize_capability, normalize_device, normalize_property
+from app.yandex.normalize import (
+    normalize_capability,
+    normalize_color_setting,
+    normalize_device,
+    normalize_property,
+)
 
 
 def test_on_off_capability_becomes_switch():
@@ -45,11 +50,35 @@ def test_color_setting_capability_becomes_color_control():
     cap = {
         "type": "devices.capabilities.color_setting",
         "retrievable": True,
+        "parameters": {"color_model": "hsv"},
         "state": {"instance": "hsv", "value": {"h": 200, "s": 50, "v": 100}},
     }
-    control = normalize_capability(cap)
-    assert control.kind == "color"
-    assert control.color_model == "hsv"
+    controls = normalize_color_setting(cap)
+    assert len(controls) == 1
+    assert controls[0].kind == "color"
+    assert controls[0].color_model == "hsv"
+    assert controls[0].value == {"h": 200, "s": 50, "v": 100}
+
+
+def test_color_setting_with_both_color_and_temperature_exposes_both():
+    """Real Yandex bulbs report ONE color_setting capability whose parameters
+    list support for both hsv and temperature_k, with `state` reflecting only
+    whichever was set last — both must still show up as separate controls."""
+    cap = {
+        "type": "devices.capabilities.color_setting",
+        "retrievable": True,
+        "parameters": {"color_model": "hsv", "temperature_k": {"min": 2700, "max": 6500}},
+        "state": {"instance": "temperature_k", "value": 6500},
+    }
+    controls = normalize_color_setting(cap)
+    kinds = {c.color_model: c for c in controls}
+    assert set(kinds.keys()) == {"hsv", "temperature_k"}
+    assert kinds["temperature_k"].value == 6500
+    assert kinds["temperature_k"].min == 2700
+    assert kinds["temperature_k"].max == 6500
+    # hsv wasn't the active mode, so Yandex never reports its last value —
+    # it should still be present with a sensible default instead of missing.
+    assert kinds["hsv"].value == {"h": 0, "s": 0, "v": 100}
 
 
 def test_unknown_capability_is_marked_unsupported():

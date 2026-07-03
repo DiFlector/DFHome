@@ -1,10 +1,26 @@
+import json
+
 from fastapi import APIRouter
 
+from app import storage
 from app.models import HomeView, RoomView, ScenarioSummary
 from app.yandex.normalize import normalize_device
 from app.yandex.official import OfficialClient
 
 router = APIRouter(prefix="/home", tags=["home"])
+
+
+async def _ordered_room_ids(seen_ids: list[str]) -> list[str]:
+    """Remember the order rooms were first seen in, so the dashboard doesn't
+    reshuffle on every refresh just because Yandex's own room ordering isn't
+    guaranteed stable. New rooms are appended at the end; rooms that no
+    longer exist are dropped."""
+    raw = await storage.get("room_order")
+    stored: list[str] = json.loads(raw) if raw else []
+    updated = [rid for rid in stored if rid in seen_ids] + [rid for rid in seen_ids if rid not in stored]
+    if updated != stored:
+        await storage.set_values({"room_order": json.dumps(updated)})
+    return updated
 
 
 @router.get("", response_model=HomeView)
@@ -28,13 +44,16 @@ async def get_home() -> HomeView:
         else:
             unassigned.append(device)
 
+    ordered_ids = await _ordered_room_ids(list(room_by_id.keys()))
+    ordered_rooms = [rooms[room_id] for room_id in ordered_ids if room_id in rooms]
+
     scenarios = [
         ScenarioSummary(id=s["id"], name=s.get("name", s["id"]), icon=s.get("icon"))
         for s in data.get("scenarios", [])
     ]
 
     return HomeView(
-        rooms=list(rooms.values()),
+        rooms=ordered_rooms,
         unassigned_devices=unassigned,
         scenarios=scenarios,
     )
