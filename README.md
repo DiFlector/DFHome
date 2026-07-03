@@ -34,7 +34,7 @@ cp .env.example .env   # опционально — можно оставить 
 docker-compose up --build
 ```
 
-Приложение будет доступно на **http://localhost:8080**.
+Приложение будет доступно на **http://localhost:1285**.
 
 ## Получение доступа к аккаунту Яндекса
 
@@ -78,7 +78,7 @@ uvicorn app.main:app --reload
 # frontend (использует pnpm)
 cd frontend
 pnpm install
-pnpm run dev   # проксирует /api на localhost:8000, см. vite.config.ts
+pnpm run dev   # http://localhost:1285, проксирует /api на localhost:8000, см. vite.config.ts
 ```
 
 ## Тесты

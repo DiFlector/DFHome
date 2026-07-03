@@ -24,7 +24,7 @@ class Settings(BaseSettings):
 
     # CORS origins allowed to talk to the API directly (useful for local dev
     # of the frontend outside docker-compose).
-    cors_origins: list[str] = ["http://localhost:5173", "http://localhost:8080"]
+    cors_origins: list[str] = ["http://localhost:1285"]
 
 
 settings = Settings()
