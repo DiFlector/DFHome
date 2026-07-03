@@ -1030,6 +1030,12 @@ button.danger:hover:not(:disabled) {
 /* ---------------------------------------------------------------------
    Kiosk (fullscreen TV) mode — toggled as a body class from Plan.tsx
 --------------------------------------------------------------------- */
+/* The kiosk view must fit the screen exactly — a TV never scrolls. Anything
+   that doesn't fit (see the 2-column widgets grid below) is clipped. */
+body.kiosk-mode {
+  overflow: hidden;
+}
+
 body.kiosk-mode .sidebar {
   display: none;
 }
@@ -1052,6 +1058,24 @@ body.kiosk-mode .widgets-panel .widget-add-actions,
 body.kiosk-mode .widgets-panel .widget-add-form,
 body.kiosk-mode .widgets-panel .remove-btn {
   display: none;
+}
+
+/* A single 390px column overflows the TV vertically, so the kiosk panel
+   doubles in width and lays widgets out in two columns instead. Combined
+   with body overflow:hidden this keeps the page scroll-free. */
+body.kiosk-mode .widgets-panel {
+  width: 700px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-content: start;
+  max-height: calc(100vh - 24px);
+  overflow: hidden;
+}
+
+body.kiosk-mode .widgets-panel h3 {
+  grid-column: 1 / -1;
+  margin-bottom: 0;
 }
 
 .kiosk-toolbar-right {
@@ -1105,6 +1129,22 @@ body.kiosk-mode .plan-toolbar h2 {
 .kiosk-exit-btn:hover {
   color: var(--text-primary);
   border-color: var(--accent);
+}
+
+.kiosk-exit-btn.is-active {
+  color: var(--accent-strong);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* Night dimming for the kiosk TV: a passive shade under the popover layer
+   (z 1000), so an opened device card still reads at full brightness. */
+.night-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: rgba(0, 0, 0, 0.55);
+  pointer-events: none;
 }
 
 /* ---------------------------------------------------------------------
@@ -1179,6 +1219,21 @@ body.kiosk-mode .plan-toolbar h2 {
   color: var(--text-muted);
 }
 
+.plan-add-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.plan-add-group-label {
+  padding: 8px 10px 2px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 /* The plan page wants every horizontal pixel it can get (the canvas scales
    its content to fit), so lift .content's default max-width there. */
 .content:has(.plan-page) {
@@ -1195,7 +1250,8 @@ body.kiosk-mode .plan-toolbar h2 {
   border: 1px solid var(--border-glass);
   border-radius: var(--radius-md);
   overflow: auto;
-  background-image: radial-gradient(circle, rgba(223, 230, 233, 0.08) 1px, transparent 1px);
+  background-image: linear-gradient(rgba(223, 230, 233, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(223, 230, 233, 0.055) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
@@ -1262,6 +1318,45 @@ body.kiosk-mode .plan-toolbar h2 {
 .plan-room-remove:hover {
   color: var(--c-pink-glamour);
   border-color: var(--danger);
+}
+
+/* Comfort chip: room's averaged temperature/humidity vs the comfort bands. */
+.plan-room-comfort {
+  position: absolute;
+  left: 10px;
+  bottom: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.plan-room-comfort::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.plan-room-comfort.comfort-good {
+  color: var(--c-light-greenish-blue);
+  background: var(--success-soft);
+}
+
+.plan-room-comfort.comfort-ok {
+  color: var(--warning);
+  background: var(--warning-soft);
+}
+
+.plan-room-comfort.comfort-bad {
+  color: var(--c-pink-glamour);
+  background: var(--danger-soft);
 }
 
 .plan-room-resize-handle {
@@ -1346,6 +1441,111 @@ body.kiosk-mode .plan-toolbar h2 {
 }
 
 .plan-device-remove:hover {
+  color: var(--c-pink-glamour);
+  border-color: var(--danger);
+}
+
+/* Edit-mode button on a marker: convert to a room-perimeter outline. */
+.plan-device-outline-btn {
+  position: absolute;
+  top: -4px;
+  left: 6px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-glass-strong);
+  color: var(--text-muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.plan-device-outline-btn:hover {
+  color: var(--accent-strong);
+  border-color: var(--accent);
+}
+
+/* ---------------------------------------------------------------------
+   LED strip drawn around a room's perimeter (see DeviceOutline.tsx).
+   The box is pointer-transparent so markers inside stay clickable; the
+   name tag and edit actions sit on the top border and take clicks.
+--------------------------------------------------------------------- */
+.plan-strip {
+  position: absolute;
+  border: 3px solid rgba(223, 230, 233, 0.22); /* off / unknown state */
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+  transition: box-shadow var(--duration-base) var(--ease), border-color var(--duration-base) var(--ease);
+}
+
+.plan-strip.is-offline {
+  opacity: 0.4;
+}
+
+.plan-strip-tag {
+  pointer-events: auto;
+  position: absolute;
+  top: 0;
+  left: 12px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 65%;
+  padding: 3px 10px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-glass-strong);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.plan-strip-tag:hover {
+  color: var(--text-primary);
+  border-color: var(--accent);
+}
+
+.plan-strip-tag span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-strip-actions {
+  pointer-events: auto;
+  position: absolute;
+  top: 0;
+  right: 12px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  gap: 4px;
+}
+
+.plan-strip-actions button {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-glass-strong);
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.plan-strip-actions button:hover {
+  color: var(--accent-strong);
+  border-color: var(--accent);
+}
+
+.plan-strip-actions button.is-danger:hover {
   color: var(--c-pink-glamour);
   border-color: var(--danger);
 }

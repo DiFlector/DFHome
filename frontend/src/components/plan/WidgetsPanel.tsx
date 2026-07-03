@@ -1,7 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { endpoints } from "../../api/client";
-import type { DeviceView, RoomSensorWidget, SensorChartWidget, WeatherWidget, Widget } from "../../api/types";
+import { apiErrorMessage, endpoints } from "../../api/client";
+import type {
+  DeviceView,
+  RoomSensorWidget,
+  SensorChartWidget,
+  WeatherData,
+  WeatherWidget,
+  Widget,
+} from "../../api/types";
 import SensorChartCard from "./SensorChartCard";
 
 interface Props {
@@ -12,8 +19,31 @@ function genId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+// WMO weather codes: what's falling from the sky right now.
+const RAIN_CODES = new Set([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 99]);
+const SNOW_CODES = new Set([71, 73, 75, 77, 85, 86]);
+
+// One human line about rain: falling now → expected at HH:mm → none in 24 h.
+function rainSummary(data: WeatherData): string {
+  const code = data.weather_code;
+  const precipitating = (data.precipitation ?? 0) > 0 || (code !== null && (RAIN_CODES.has(code) || SNOW_CODES.has(code)));
+  if (precipitating) {
+    return code !== null && SNOW_CODES.has(code) ? "Сейчас идёт снег" : "Сейчас идёт дождь";
+  }
+  const upcoming = (data.hourly ?? []).find(
+    (h) => (h.precipitation_probability ?? 0) >= 50 || (h.precipitation ?? 0) >= 0.1,
+  );
+  if (upcoming) {
+    const at = upcoming.time.slice(11, 16);
+    const kind = upcoming.weather_code !== null && SNOW_CODES.has(upcoming.weather_code) ? "Снег" : "Дождь";
+    const prob = upcoming.precipitation_probability;
+    return `${kind} ожидается к ${at}${prob ? ` · ${prob}%` : ""}`;
+  }
+  return "Без осадков в ближайшие 24 ч";
+}
+
 function WeatherWidgetCard({ widget, onRemove }: { widget: WeatherWidget; onRemove: () => void }) {
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["weather", widget.query],
     queryFn: () => endpoints.getWeather(widget.query),
     refetchInterval: 15 * 60 * 1000,
@@ -28,13 +58,14 @@ function WeatherWidgetCard({ widget, onRemove }: { widget: WeatherWidget; onRemo
         </button>
       </div>
       {isLoading && <span className="loading">…</span>}
-      {isError && <span className="widget-error">Не удалось получить погоду</span>}
+      {isError && <span className="widget-error">{apiErrorMessage(error)}</span>}
       {data && (
         <div className="widget-body">
           <div className="widget-value">{Math.round(data.temperature ?? 0)}°C</div>
           <div className="widget-meta">
             Влажность {data.humidity}% · Ветер {data.wind_speed} км/ч
           </div>
+          <div className="widget-meta">{rainSummary(data)}</div>
         </div>
       )}
     </div>

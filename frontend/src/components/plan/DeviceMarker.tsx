@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import type { DeviceView, PlanDevicePosition } from "../../api/types";
 import { useDrag } from "../../hooks/useDrag";
 import { hsvToRgb, kelvinToRgb, type HsvValue } from "../../utils/color";
-import { deviceTypeIcon } from "../icons";
+import { deviceTypeIcon, FrameIcon } from "../icons";
 
 interface Props {
   device: DeviceView;
@@ -11,13 +11,16 @@ interface Props {
   onChange: (pos: PlanDevicePosition) => void;
   onRemove: () => void;
   onOpen: (anchor: { top: number; left: number; width: number; height: number }) => void;
+  /** Present when the marker sits inside a plan room: converts the device
+      into a room-perimeter outline (LED strip mode). */
+  onMakeOutline?: () => void;
 }
 
 // A default hsv control (see backend normalize.py's normalize_color_setting)
 // is always fully desaturated {s: 0}; real saturation only appears when hsv
 // is genuinely the active color mode. That lets us pick the right glow
 // source without the backend needing to flag "which mode is active".
-function resolveGlowColor(device: DeviceView): { r: number; g: number; b: number } | null {
+export function resolveGlowColor(device: DeviceView): { r: number; g: number; b: number } | null {
   const hsvControl = device.controls.find((c) => c.color_model === "hsv");
   const hsv = hsvControl?.value as HsvValue | undefined;
   if (hsv && hsv.s > 0) return hsvToRgb(hsv);
@@ -29,7 +32,7 @@ function resolveGlowColor(device: DeviceView): { r: number; g: number; b: number
   return null;
 }
 
-export default function DeviceMarker({ device, position, editable, onChange, onRemove, onOpen }: Props) {
+export default function DeviceMarker({ device, position, editable, onChange, onRemove, onOpen, onMakeOutline }: Props) {
   const drag = useDrag(
     editable,
     () => ({ x: position.x, y: position.y }),
@@ -87,6 +90,21 @@ export default function DeviceMarker({ device, position, editable, onChange, onR
           aria-label="Убрать устройство с плана"
         >
           ×
+        </button>
+      )}
+      {editable && onMakeOutline && (
+        <button
+          type="button"
+          className="plan-device-outline-btn"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onMakeOutline();
+          }}
+          title="Растянуть по периметру комнаты (лента)"
+          aria-label="Растянуть по периметру комнаты"
+        >
+          <FrameIcon width={11} height={11} />
         </button>
       )}
     </div>

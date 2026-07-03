@@ -16,7 +16,7 @@ export default function DeviceDetail() {
   return (
     <div>
       <Link
-        to="/"
+        to="/devices"
         style={{
           display: "inline-flex",
           alignItems: "center",

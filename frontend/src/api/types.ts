@@ -130,6 +130,10 @@ export interface PlanDevicePosition {
   device_id: string;
   x: number;
   y: number;
+  /** When set (e.g. an LED strip), the device is drawn as a glowing outline
+      around this plan room instead of a point marker. x/y are kept as the
+      fallback marker position. */
+  outline_room_id?: string | null;
 }
 
 export interface PlanLayout {
@@ -173,6 +177,13 @@ export interface HistoryPoint {
 
 export type DeviceHistory = Record<string, HistoryPoint[]>;
 
+export interface WeatherHourly {
+  time: string; // local time of the city, "YYYY-MM-DDTHH:mm"
+  precipitation_probability: number | null;
+  precipitation: number | null;
+  weather_code: number | null;
+}
+
 export interface WeatherData {
   city: string;
   lat: number;
@@ -181,4 +192,6 @@ export interface WeatherData {
   humidity: number | null;
   wind_speed: number | null;
   weather_code: number | null;
+  precipitation: number | null;
+  hourly: WeatherHourly[];
 }

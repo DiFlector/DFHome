@@ -162,6 +162,42 @@ export function TrashIcon(props: IconProps) {
   );
 }
 
+export function MoonIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" />
+    </svg>
+  );
+}
+
+export function GaugeIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M4.5 16a8 8 0 1 1 15 0" />
+      <path d="M12 15.5 15.5 11" />
+      <circle cx="12" cy="15.5" r="1.2" />
+    </svg>
+  );
+}
+
+/** Dashed rectangle — "stretch this device around the room's perimeter". */
+export function FrameIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="4" y="4" width="16" height="16" rx="3" strokeDasharray="4 3" />
+    </svg>
+  );
+}
+
+export function PinIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M12 21S5.5 15.6 5.5 11a6.5 6.5 0 0 1 13 0c0 4.6-6.5 10-6.5 10Z" />
+      <circle cx="12" cy="10.5" r="2.2" />
+    </svg>
+  );
+}
+
 /** Maps a Yandex device.type string to a representative icon. */
 export function deviceTypeIcon(type: string, props: IconProps = {}): JSX.Element {
   if (type.includes("light")) return <BulbIcon {...props} />;

@@ -7,7 +7,8 @@ interface Props {
   onRemove: () => void;
 }
 
-const WINDOW_HOURS = 12;
+const WINDOW_HOURS = 3;
+const TICK_STEP_HOURS = 1;
 
 // Chart geometry (viewBox units; the SVG itself is fluid-width).
 const W = 340;
@@ -68,8 +69,11 @@ export default function SensorChartCard({ widget, onRemove }: Props) {
 
   const pointColor = (v: number) => (isHumidity ? humidityColor(v) : ACCENT);
 
-  // Time gridlines every 3 hours across the 12-hour window.
-  const ticks = Array.from({ length: WINDOW_HOURS / 3 + 1 }, (_, i) => start + i * 3 * 3600);
+  // Time gridlines at a fixed hour step across the window.
+  const ticks = Array.from(
+    { length: WINDOW_HOURS / TICK_STEP_HOURS + 1 },
+    (_, i) => start + i * TICK_STEP_HOURS * 3600,
+  );
 
   const last = points[points.length - 1]?.value;
   const unit = widget.unit || (isHumidity ? "%" : "");

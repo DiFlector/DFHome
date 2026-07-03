@@ -4,7 +4,7 @@ The official Yandex API has no state history, so the chart widgets need the
 backend to build one itself: a background task polls /user/info every
 15 minutes and stores every numeric property (temperature, humidity, ...)
 as a (device_id, instance, ts, value) row. Old rows are pruned so the table
-stays bounded — the widgets only look 12 hours back.
+stays bounded — the chart widgets only look a few hours back.
 """
 import asyncio
 import logging

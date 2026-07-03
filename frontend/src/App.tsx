@@ -1,4 +1,4 @@
-import { NavLink, Route, Routes } from "react-router-dom";
+import { Navigate, NavLink, Route, Routes } from "react-router-dom";
 import { FlowIcon, HomeIcon, LayoutIcon, SettingsIcon } from "./components/icons";
 import Dashboard from "./pages/Dashboard";
 import DeviceDetail from "./pages/DeviceDetail";
@@ -19,12 +19,12 @@ export default function App() {
         </h1>
         <nav>
           <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>
-            <HomeIcon />
-            Устройства
-          </NavLink>
-          <NavLink to="/plan" className={({ isActive }) => (isActive ? "active" : "")}>
             <LayoutIcon />
             Дашборд
+          </NavLink>
+          <NavLink to="/devices" className={({ isActive }) => (isActive ? "active" : "")}>
+            <HomeIcon />
+            Устройства
           </NavLink>
           <NavLink to="/scenarios" className={({ isActive }) => (isActive ? "active" : "")}>
             <FlowIcon />
@@ -38,9 +38,11 @@ export default function App() {
       </aside>
       <main className="content">
         <Routes>
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/" element={<Plan />} />
+          <Route path="/devices" element={<Dashboard />} />
           <Route path="/devices/:id" element={<DeviceDetail />} />
-          <Route path="/plan" element={<Plan />} />
+          {/* Old dashboard URL — keep bookmarks/kiosk shortcuts working. */}
+          <Route path="/plan" element={<Navigate to="/" replace />} />
           <Route path="/scenarios" element={<Scenarios />} />
           <Route path="/scenarios/new" element={<ScenarioForm />} />
           <Route path="/scenarios/:id/edit" element={<ScenarioForm />} />
