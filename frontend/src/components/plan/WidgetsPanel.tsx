@@ -47,6 +47,9 @@ function WeatherWidgetCard({ widget, onRemove }: { widget: WeatherWidget; onRemo
     queryKey: ["weather", widget.query],
     queryFn: () => endpoints.getWeather(widget.query),
     refetchInterval: 15 * 60 * 1000,
+    // The backend already caches and retries; don't pile more requests on a
+    // struggling upstream (each failure used to trigger 3 client retries).
+    retry: 1,
   });
 
   return (
@@ -177,7 +180,7 @@ export default function WidgetsPanel({ devices }: Props) {
       )}
 
       {adding === null && (
-        <div className="widget-add-actions" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div className="widget-add-actions">
           <button type="button" className="secondary" onClick={() => setAdding("weather")}>
             + Погода
           </button>

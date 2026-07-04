@@ -1611,6 +1611,14 @@ body.kiosk-mode .plan-toolbar h2 {
   color: var(--c-pink-glamour);
 }
 
+/* Class-only styling (no inline styles): the kiosk rule above hides these
+   with display:none, which an inline display:flex would silently override. */
+.widget-add-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .widget-add-form {
   display: flex;
   flex-direction: column;

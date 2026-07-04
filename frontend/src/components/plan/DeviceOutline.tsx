@@ -33,9 +33,9 @@ export default function DeviceOutline({ device, room, editable, onRemove, onToMa
     height: room.height,
     ...(rgb && {
       borderColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.95)`,
-      boxShadow:
-        `0 0 ${10 + glow * 22}px ${2 + glow * 5}px rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${(0.3 + glow * 0.3).toFixed(2)}), ` +
-        `inset 0 0 ${8 + glow * 18}px rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${(0.18 + glow * 0.22).toFixed(2)})`,
+      // Inset-only: an LED strip lights the room it runs around, not the
+      // walls outside it.
+      boxShadow: `inset 0 0 ${14 + glow * 30}px ${3 + glow * 8}px rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${(0.26 + glow * 0.3).toFixed(2)})`,
     }),
   };
 

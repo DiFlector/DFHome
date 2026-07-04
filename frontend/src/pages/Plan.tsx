@@ -150,18 +150,25 @@ export default function Plan() {
   // stick out past an element's own box, and anything poking beyond the
   // canvas would bring scrollbars back.
   const EDGE_PAD = 16;
+
+  // Everything on the plan snaps to the canvas grid (its background-size),
+  // so rooms line up flush against each other without pixel hunting.
+  const GRID = 24;
+  const snap = (v: number) => Math.round(v / GRID) * GRID;
+
   const clampRoom = (r: PlanRoom): PlanRoom => {
+    const s = { ...r, x: snap(r.x), y: snap(r.y), width: snap(r.width), height: snap(r.height) };
     if (!canvasSize.w || !canvasSize.h) {
-      return { ...r, x: Math.max(EDGE_PAD, r.x), y: Math.max(EDGE_PAD, r.y) };
+      return { ...s, x: Math.max(EDGE_PAD, s.x), y: Math.max(EDGE_PAD, s.y) };
     }
-    const width = Math.min(r.width, canvasSize.w - EDGE_PAD * 2);
-    const height = Math.min(r.height, canvasSize.h - EDGE_PAD * 2);
+    const width = Math.min(s.width, canvasSize.w - EDGE_PAD * 2);
+    const height = Math.min(s.height, canvasSize.h - EDGE_PAD * 2);
     return {
-      ...r,
+      ...s,
       width,
       height,
-      x: Math.min(Math.max(EDGE_PAD, r.x), canvasSize.w - width - EDGE_PAD),
-      y: Math.min(Math.max(EDGE_PAD, r.y), canvasSize.h - height - EDGE_PAD),
+      x: Math.min(Math.max(EDGE_PAD, s.x), canvasSize.w - width - EDGE_PAD),
+      y: Math.min(Math.max(EDGE_PAD, s.y), canvasSize.h - height - EDGE_PAD),
     };
   };
 
@@ -169,13 +176,14 @@ export default function Plan() {
   // ~76px tall/wide with its label, so keep the center half that far in.
   const DEVICE_HALF = 38 + EDGE_PAD;
   const clampDevice = (d: PlanDevicePosition): PlanDevicePosition => {
+    const s = { ...d, x: snap(d.x), y: snap(d.y) };
     if (!canvasSize.w || !canvasSize.h) {
-      return { ...d, x: Math.max(DEVICE_HALF, d.x), y: Math.max(DEVICE_HALF, d.y) };
+      return { ...s, x: Math.max(DEVICE_HALF, s.x), y: Math.max(DEVICE_HALF, s.y) };
     }
     return {
-      ...d,
-      x: Math.min(Math.max(DEVICE_HALF, d.x), canvasSize.w - DEVICE_HALF),
-      y: Math.min(Math.max(DEVICE_HALF, d.y), canvasSize.h - DEVICE_HALF),
+      ...s,
+      x: Math.min(Math.max(DEVICE_HALF, s.x), canvasSize.w - DEVICE_HALF),
+      y: Math.min(Math.max(DEVICE_HALF, s.y), canvasSize.h - DEVICE_HALF),
     };
   };
 
@@ -192,7 +200,7 @@ export default function Plan() {
     const offset = (layout.rooms.length % 6) * 24;
     setLayout((prev) => ({
       ...prev,
-      rooms: [...prev.rooms, { room_id: roomId, x: 40 + offset, y: 40 + offset, width: 260, height: 180 }],
+      rooms: [...prev.rooms, { room_id: roomId, x: 48 + offset, y: 48 + offset, width: 264, height: 192 }],
     }));
     setAddingRoom(false);
   };
@@ -210,7 +218,7 @@ export default function Plan() {
     const offset = (layout.devices.length % 8) * 24;
     setLayout((prev) => ({
       ...prev,
-      devices: [...prev.devices, { device_id: deviceId, x: 80 + offset, y: 80 + offset }],
+      devices: [...prev.devices, { device_id: deviceId, x: 96 + offset, y: 96 + offset }],
     }));
     setAddingDevice(false);
   };
@@ -251,11 +259,11 @@ export default function Plan() {
     Math.max(0, ...layout.rooms.map((r) => r.x + r.width), ...layout.devices.map((d) => d.x + 40)) + FIT_PAD;
   const contentH =
     Math.max(0, ...layout.rooms.map((r) => r.y + r.height), ...layout.devices.map((d) => d.y + 48)) + FIT_PAD;
-  // In kiosk mode the plan may also scale UP to fill the TV (capped so
-  // markers don't balloon); in the normal view it only ever shrinks.
+  // The plan scales BOTH ways to fill the canvas (capped so markers don't
+  // balloon on huge screens) — same behavior windowed and in kiosk mode, so
+  // the plan looks the same size in both.
   const rawFit = Math.min(canvasSize.w / contentW, canvasSize.h / contentH);
-  const fitScale =
-    editing || !hasContent || canvasSize.w === 0 ? 1 : kiosk ? Math.min(2.5, rawFit) : Math.min(1, rawFit);
+  const fitScale = editing || !hasContent || canvasSize.w === 0 ? 1 : Math.min(2.5, rawFit);
   // Center the fitted plan in the canvas instead of pinning it top-left.
   const fitOffsetX =
     editing || !hasContent || canvasSize.w === 0 ? 0 : Math.max(0, (canvasSize.w - contentW * fitScale) / 2);

@@ -8,6 +8,7 @@ don't move), weather for a short TTL — and the last good payload is served
 stale when Open-Meteo is unreachable, so a network hiccup doesn't blank the
 widget on the dashboard.
 """
+import asyncio
 import logging
 import time
 
@@ -19,6 +20,10 @@ _LOGGER = logging.getLogger(__name__)
 router = APIRouter(prefix="/weather", tags=["weather"])
 
 WEATHER_TTL_SECONDS = 10 * 60
+# Hard ceiling on the whole open-meteo round trip. Must stay well under
+# nginx's proxy_read_timeout: if this handler hangs, nginx marks the backend
+# upstream as down and EVERY api call starts returning 502 for a while.
+FETCH_DEADLINE_SECONDS = 8
 
 # city query (lowercased) -> geocoding result
 _geo_cache: dict[str, dict] = {}
@@ -29,9 +34,9 @@ _weather_cache: dict[str, tuple[float, dict]] = {}
 def _client() -> httpx.AsyncClient:
     # local_address pins sockets to IPv4: Docker/TrueNAS networks often get
     # AAAA records from DNS without a working IPv6 route, and the connect
-    # then hangs until timeout. retries covers transient connect failures.
-    transport = httpx.AsyncHTTPTransport(local_address="0.0.0.0", retries=2)
-    return httpx.AsyncClient(transport=transport, timeout=10.0)
+    # then hangs until timeout. One retry covers transient connect failures.
+    transport = httpx.AsyncHTTPTransport(local_address="0.0.0.0", retries=1)
+    return httpx.AsyncClient(transport=transport, timeout=5.0)
 
 
 async def _geocode(client: httpx.AsyncClient, query: str) -> dict:
@@ -57,32 +62,34 @@ async def get_weather(query: str = Query(..., min_length=1)) -> dict:
         return cached[1]
 
     try:
-        async with _client() as client:
-            location = await _geocode(client, query)
-            lat, lon = location["latitude"], location["longitude"]
+        async with asyncio.timeout(FETCH_DEADLINE_SECONDS):
+            async with _client() as client:
+                location = await _geocode(client, query)
+                lat, lon = location["latitude"], location["longitude"]
 
-            weather_resp = await client.get(
-                "https://api.open-meteo.com/v1/forecast",
-                params={
-                    "latitude": lat,
-                    "longitude": lon,
-                    "current": "temperature_2m,relative_humidity_2m,wind_speed_10m,"
-                    "weather_code,precipitation",
-                    "hourly": "precipitation_probability,precipitation,weather_code",
-                    "forecast_hours": 24,
-                    # Hourly timestamps in the city's local time, so the
-                    # frontend can say "дождь к 15:00" without converting.
-                    "timezone": "auto",
-                },
-            )
-            body = weather_resp.json()
-    except httpx.HTTPError as exc:
-        _LOGGER.warning("Weather fetch failed for %r: %s: %s", query, type(exc).__name__, exc)
+                weather_resp = await client.get(
+                    "https://api.open-meteo.com/v1/forecast",
+                    params={
+                        "latitude": lat,
+                        "longitude": lon,
+                        "current": "temperature_2m,relative_humidity_2m,wind_speed_10m,"
+                        "weather_code,precipitation",
+                        "hourly": "precipitation_probability,precipitation,weather_code",
+                        "forecast_hours": 24,
+                        # Hourly timestamps in the city's local time, so the
+                        # frontend can say "дождь к 15:00" without converting.
+                        "timezone": "auto",
+                    },
+                )
+                body = weather_resp.json()
+    except (httpx.HTTPError, TimeoutError) as exc:
+        reason = f"{type(exc).__name__}{f': {exc}' if str(exc) else ''}"
+        _LOGGER.warning("Weather fetch failed for %r: %s", query, reason)
         if cached:  # stale data beats an error card
             return cached[1]
         raise HTTPException(
             status_code=502,
-            detail=f"Не удалось получить погоду: {type(exc).__name__}: {exc}",
+            detail=f"Не удалось получить погоду: {reason}",
         ) from exc
 
     current = body.get("current", {})
