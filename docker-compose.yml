@@ -29,3 +29,11 @@ services:
 
 volumes:
   dfhome-data:
+
+networks:
+  # Smaller MTU than the 1500 default: on TrueNAS SCALE bridges a full-size
+  # TLS ServerHello can silently vanish (PMTU blackhole) — the connection
+  # opens but the response never arrives, which looks like a read timeout.
+  default:
+    driver_opts:
+      com.docker.network.driver.mtu: "1400"

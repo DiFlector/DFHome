@@ -1049,9 +1049,12 @@ body.kiosk-mode .content {
   padding: 0 4px;
 }
 
-/* Fill the screen: viewport minus app padding, toolbar and its margin. */
+/* Height cap: viewport minus app padding, toolbar and its margin. Plan.tsx
+   sets the actual height inline, cut to the plan's content so no empty band
+   is left under the plan; min-height must not push it back down. */
 body.kiosk-mode .plan-canvas {
   height: calc(100vh - 96px);
+  min-height: 0;
 }
 
 body.kiosk-mode .widgets-panel .widget-add-actions,
@@ -1290,6 +1293,7 @@ body.kiosk-mode .plan-toolbar h2 {
 
 .plan-room-label {
   position: absolute;
+  z-index: 2;
   top: 8px;
   left: 10px;
   font-size: 12px;
@@ -1302,6 +1306,7 @@ body.kiosk-mode .plan-toolbar h2 {
 
 .plan-room-remove {
   position: absolute;
+  z-index: 2;
   top: 4px;
   right: 4px;
   width: 22px;
@@ -1325,6 +1330,7 @@ body.kiosk-mode .plan-toolbar h2 {
 /* Comfort chip: room's averaged temperature/humidity vs the comfort bands. */
 .plan-room-comfort {
   position: absolute;
+  z-index: 2;
   left: 10px;
   bottom: 8px;
   display: inline-flex;
@@ -1363,6 +1369,7 @@ body.kiosk-mode .plan-toolbar h2 {
 
 .plan-room-resize-handle {
   position: absolute;
+  z-index: 2;
   right: -6px;
   bottom: -6px;
   width: 16px;
@@ -1375,6 +1382,7 @@ body.kiosk-mode .plan-toolbar h2 {
 
 .plan-device {
   position: absolute;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1474,8 +1482,13 @@ body.kiosk-mode .plan-toolbar h2 {
    The box is pointer-transparent so markers inside stay clickable; the
    name tag and edit actions sit on the top border and take clicks.
 --------------------------------------------------------------------- */
+/* Stacking: rooms sit at the base (no z-index), strip glows at 1, and
+   device markers plus room labels/chips at 2 — glows never wash out the
+   readable bits. Rooms must keep z-index:auto so their absolutely
+   positioned children can rise above sibling strips. */
 .plan-strip {
   position: absolute;
+  z-index: 1;
   border: 3px solid rgba(223, 230, 233, 0.22); /* off / unknown state */
   border-radius: var(--radius-sm);
   pointer-events: none;

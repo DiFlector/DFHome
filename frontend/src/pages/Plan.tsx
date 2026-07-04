@@ -253,7 +253,10 @@ export default function Plan() {
     return () => observer.disconnect();
   }, [isLoading]);
 
-  const FIT_PAD = 56;
+  // FIT_PAD matches EDGE_PAD: content is clamped 16px inside the canvas, so
+  // a layout that fits renders at exactly scale 1 — identical to editing.
+  // (A larger pad used to force ~0.95 shrink even when everything fit.)
+  const FIT_PAD = 16;
   const hasContent = layout.rooms.length > 0 || layout.devices.length > 0;
   const contentW =
     Math.max(0, ...layout.rooms.map((r) => r.x + r.width), ...layout.devices.map((d) => d.x + 40)) + FIT_PAD;
@@ -263,8 +266,17 @@ export default function Plan() {
   // the edit mode whenever it fits, and only scales down on screens smaller
   // than the layout. No upscaling and no centering — enlarging or shifting
   // the plan made the kiosk view look different from the editing view.
-  const rawFit = Math.min(canvasSize.w / contentW, canvasSize.h / contentH);
-  const fitScale = editing || !hasContent || canvasSize.w === 0 ? 1 : Math.min(1, rawFit);
+  // In kiosk mode the height budget comes from the viewport (not the canvas,
+  // whose height we set below), and the canvas is then cut to the content so
+  // no empty band is left underneath the plan.
+  const KIOSK_CHROME = 96; // toolbar + paddings, mirrors the kiosk CSS calc
+  const kioskMaxH = Math.max(0, window.innerHeight - KIOSK_CHROME);
+  const fitScale =
+    editing || !hasContent || canvasSize.w === 0
+      ? 1
+      : kiosk
+        ? Math.min(1, canvasSize.w / contentW, kioskMaxH / contentH)
+        : Math.min(1, canvasSize.w / contentW, canvasSize.h / contentH);
 
   return (
     <div className="plan-page">
@@ -397,7 +409,11 @@ export default function Plan() {
         {isLoading ? (
           <p className="loading">Загрузка плана…</p>
         ) : (
-          <div className="plan-canvas" ref={canvasRef}>
+          <div
+            className="plan-canvas"
+            ref={canvasRef}
+            style={kiosk && hasContent ? { height: Math.round(contentH * fitScale) } : undefined}
+          >
             <div className="plan-scale" style={{ transform: `scale(${fitScale})` }}>
               {layout.rooms.map((room) => (
                 <RoomBox
