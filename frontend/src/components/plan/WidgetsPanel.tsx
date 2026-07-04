@@ -5,11 +5,13 @@ import type {
   DeviceView,
   RoomSensorWidget,
   SensorChartWidget,
+  StationWidget,
   WeatherData,
   WeatherWidget,
   Widget,
 } from "../../api/types";
 import SensorChartCard from "./SensorChartCard";
+import StationCard from "./StationCard";
 
 interface Props {
   devices: DeviceView[];
@@ -107,10 +109,19 @@ export default function WidgetsPanel({ devices }: Props) {
   const queryClient = useQueryClient();
   const { data: widgets = [] } = useQuery({ queryKey: ["widgets"], queryFn: endpoints.getWidgets });
 
-  const [adding, setAdding] = useState<"weather" | "room_sensor" | "sensor_chart" | null>(null);
+  const [adding, setAdding] = useState<"weather" | "room_sensor" | "sensor_chart" | "station" | null>(null);
   const [cityInput, setCityInput] = useState("");
   const [selectedDeviceId, setSelectedDeviceId] = useState("");
   const [selectedInstance, setSelectedInstance] = useState("");
+  const [selectedStationId, setSelectedStationId] = useState("");
+
+  // Loaded lazily — only when the user opens the "add station" form.
+  const stationsQuery = useQuery({
+    queryKey: ["stations"],
+    queryFn: endpoints.getStations,
+    enabled: adding === "station",
+    retry: 1,
+  });
 
   const saveMutation = useMutation({
     mutationFn: (next: Widget[]) => endpoints.saveWidgets(next),
@@ -163,6 +174,20 @@ export default function WidgetsPanel({ devices }: Props) {
     setAdding(null);
   };
 
+  const addStationWidget = () => {
+    const station = (stationsQuery.data ?? []).find((s) => s.id === selectedStationId);
+    if (!station) return;
+    const widget: StationWidget = {
+      id: genId(),
+      kind: "station",
+      device_id: station.id,
+      device_name: station.name,
+    };
+    saveMutation.mutate([...widgets, widget]);
+    setSelectedStationId("");
+    setAdding(null);
+  };
+
   const removeWidget = (id: string) => saveMutation.mutate(widgets.filter((w) => w.id !== id));
 
   return (
@@ -174,6 +199,8 @@ export default function WidgetsPanel({ devices }: Props) {
           <WeatherWidgetCard key={w.id} widget={w} onRemove={() => removeWidget(w.id)} />
         ) : w.kind === "sensor_chart" ? (
           <SensorChartCard key={w.id} widget={w} onRemove={() => removeWidget(w.id)} />
+        ) : w.kind === "station" ? (
+          <StationCard key={w.id} widget={w} onRemove={() => removeWidget(w.id)} />
         ) : (
           <RoomSensorWidgetCard key={w.id} widget={w} devices={devices} onRemove={() => removeWidget(w.id)} />
         ),
@@ -200,6 +227,40 @@ export default function WidgetsPanel({ devices }: Props) {
           >
             + График датчика
           </button>
+          <button type="button" className="secondary" onClick={() => setAdding("station")}>
+            + Яндекс Станция
+          </button>
+        </div>
+      )}
+
+      {adding === "station" && (
+        <div className="widget-add-form">
+          {stationsQuery.isLoading && <span className="loading">Ищем станции…</span>}
+          {stationsQuery.isError && (
+            <span className="widget-error">{apiErrorMessage(stationsQuery.error)}</span>
+          )}
+          {stationsQuery.data && stationsQuery.data.length === 0 && (
+            <span className="widget-meta">В аккаунте нет станций</span>
+          )}
+          {stationsQuery.data && stationsQuery.data.length > 0 && (
+            <select value={selectedStationId} onChange={(e) => setSelectedStationId(e.target.value)}>
+              <option value="">— станция —</option>
+              {stationsQuery.data.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                  {!s.online ? " (не в сети)" : ""}
+                </option>
+              ))}
+            </select>
+          )}
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="button" className="primary" onClick={addStationWidget} disabled={!selectedStationId}>
+              Добавить
+            </button>
+            <button type="button" className="secondary" onClick={() => setAdding(null)}>
+              Отмена
+            </button>
+          </div>
         </div>
       )}
 

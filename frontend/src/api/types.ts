@@ -168,7 +168,40 @@ export interface SensorChartWidget {
   unit?: string | null;
 }
 
-export type Widget = WeatherWidget | RoomSensorWidget | SensorChartWidget;
+export interface StationWidget {
+  id: string;
+  kind: "station";
+  device_id: string;
+  device_name: string;
+}
+
+export type Widget = WeatherWidget | RoomSensorWidget | SensorChartWidget | StationWidget;
+
+// -- Yandex Station (glagol) ----------------------------------------------
+
+export interface StationInfo {
+  id: string;
+  name: string;
+  platform: string;
+  online: boolean;
+}
+
+export interface StationState {
+  device_id: string;
+  device_name: string;
+  playing: boolean;
+  volume: number | null;
+  alice_state?: string | null;
+  title: string | null;
+  artist: string | null;
+  duration: number | null;
+  progress: number | null;
+  has_prev: boolean;
+  has_next: boolean;
+  cover_url: string | null;
+}
+
+export type StationCommand = "play" | "stop" | "next" | "prev" | "rewind" | "setVolume";
 
 export interface HistoryPoint {
   ts: number;

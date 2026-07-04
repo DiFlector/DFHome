@@ -198,6 +198,42 @@ export function PinIcon(props: IconProps) {
   );
 }
 
+export function PauseIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M8.5 5v14M15.5 5v14" />
+    </svg>
+  );
+}
+
+export function SkipPrevIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M17.5 5.5v13L8.5 12l9-6.5Z" />
+      <path d="M6 5.5v13" />
+    </svg>
+  );
+}
+
+export function SkipNextIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M6.5 5.5v13l9-6.5-9-6.5Z" />
+      <path d="M18 5.5v13" />
+    </svg>
+  );
+}
+
+export function MusicIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="7" cy="17.5" r="2.8" />
+      <circle cx="17" cy="15.5" r="2.8" />
+      <path d="M9.8 17.5V6.5l10-2v11" />
+    </svg>
+  );
+}
+
 /** Maps a Yandex device.type string to a representative icon. */
 export function deviceTypeIcon(type: string, props: IconProps = {}): JSX.Element {
   if (type.includes("light")) return <BulbIcon {...props} />;

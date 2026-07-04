@@ -11,6 +11,9 @@ import type {
   ScenarioSummary,
   SettingsUpdate,
   SettingsView,
+  StationCommand,
+  StationInfo,
+  StationState,
   WeatherData,
   Widget,
 } from "./types";
@@ -79,6 +82,16 @@ export const endpoints = {
 
   getHistory: (deviceId: string, hours = 12) =>
     api.get<DeviceHistory>(`/history/${deviceId}`, { params: { hours } }).then((r) => r.data),
+
+  getStations: () => api.get<StationInfo[]>("/stations").then((r) => r.data),
+
+  getStationState: (deviceId: string) =>
+    api.get<StationState>(`/stations/${deviceId}/state`).then((r) => r.data),
+
+  stationCommand: (deviceId: string, command: StationCommand, extra?: { position?: number; volume?: number }) =>
+    api
+      .post<StationState>(`/stations/${deviceId}/command`, { command, ...extra })
+      .then((r) => r.data),
 
   exportConfig: () => api.get<Record<string, unknown>>("/settings/export").then((r) => r.data),
 

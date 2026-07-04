@@ -15,6 +15,7 @@ from app.routers import (
     plan,
     scenarios,
     settings as settings_router,
+    stations,
     weather,
     widgets,
 )
@@ -80,4 +81,5 @@ app.include_router(scenarios.router)
 app.include_router(plan.router)
 app.include_router(widgets.router)
 app.include_router(weather.router)
+app.include_router(stations.router)
 app.include_router(history_router.router)
