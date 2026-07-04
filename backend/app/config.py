@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     # are never persisted (see yandex/quasar_session.py).
     quasar_x_token: str | None = None
 
+    # Outbound HTTP proxy for weather providers that are unreachable directly
+    # from the host network (open-meteo times out from some RU ISPs; Yandex
+    # traffic never goes through here). Secret — set via WEATHER_PROXY in
+    # .env, format http://login:password@host:port; empty = connect directly.
+    weather_proxy: str | None = None
+
     # CORS origins allowed to talk to the API directly (useful for local dev
     # of the frontend outside docker-compose).
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:8080"]

@@ -1,9 +1,11 @@
 """Outdoor weather widget data with two providers:
 
 1. Open-Meteo (https://open-meteo.com) — primary: free, no key, rich data
-   (precipitation probability per hour).
-2. wttr.in — fallback for networks where Open-Meteo is unreachable (some
-   ISPs/routes): also free and keyless, resolves city names itself.
+   (precipitation probability per hour). Unreachable directly from this
+   deployment's network, so its requests go through the WEATHER_PROXY
+   configured in app/config.py.
+2. wttr.in — fallback, intentionally WITHOUT the proxy: a second,
+   independent network path in case the proxy itself goes down.
 
 Results are cached in-process: geocoding forever (a city's coordinates don't
 move), weather for a short TTL — and the last good payload is served stale
@@ -21,6 +23,8 @@ from urllib.parse import quote
 import httpx
 from fastapi import APIRouter, HTTPException, Query
 
+from app.config import settings
+
 _LOGGER = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/weather", tags=["weather"])
@@ -33,13 +37,13 @@ _geo_cache: dict[str, dict] = {}
 _weather_cache: dict[str, tuple[float, dict]] = {}
 
 
-def _client(timeout: httpx.Timeout | float) -> httpx.AsyncClient:
+def _client(timeout: httpx.Timeout | float, proxy: str | None = None) -> httpx.AsyncClient:
     # local_address pins sockets to IPv4: Docker/TrueNAS networks often get
     # AAAA records from DNS without a working IPv6 route, and the connect
     # then hangs until timeout. retries=0 on purpose — a retry would push the
     # first attempt past the outer deadline and mask the REAL exception
     # (ConnectTimeout vs ReadTimeout vs DNS) behind a bare TimeoutError.
-    transport = httpx.AsyncHTTPTransport(local_address="0.0.0.0", retries=0)
+    transport = httpx.AsyncHTTPTransport(local_address="0.0.0.0", retries=0, proxy=proxy)
     return httpx.AsyncClient(
         transport=transport,
         timeout=timeout,
@@ -168,13 +172,15 @@ async def _fetch_wttr(client: httpx.AsyncClient, query: str) -> dict:
     }
 
 
-# fetcher, httpx timeout, overall deadline (s). Open-meteo answers fast or
-# not at all; wttr.in is a free community service that can take >10s to
-# render a cold city, so it gets a much longer read budget. Both deadlines
-# together must stay under nginx's 30s proxy_read_timeout.
+# fetcher, httpx timeout, overall deadline (s), use_proxy. Open-meteo goes
+# through WEATHER_PROXY (unreachable directly from this network) and answers
+# fast or not at all; wttr.in stays direct as an independent path and is a
+# free community service that can take >10s to render a cold city, so it
+# gets a much longer read budget. Both deadlines together must stay under
+# nginx's 30s proxy_read_timeout.
 _PROVIDERS = {
-    "open-meteo": (_fetch_open_meteo, 5.0, 8),
-    "wttr.in": (_fetch_wttr, httpx.Timeout(15.0, connect=5.0), 18),
+    "open-meteo": (_fetch_open_meteo, 5.0, 8, True),
+    "wttr.in": (_fetch_wttr, httpx.Timeout(15.0, connect=5.0), 18, False),
 }
 # The provider that answered last time is tried first, so a network where
 # open-meteo is unreachable doesn't pay its connect timeout on every refresh.
@@ -191,10 +197,10 @@ async def get_weather(query: str = Query(..., min_length=1)) -> dict:
 
     errors: list[str] = []
     for name in sorted(_PROVIDERS, key=lambda n: n != _preferred):
-        fetch, timeout, deadline = _PROVIDERS[name]
+        fetch, timeout, deadline, use_proxy = _PROVIDERS[name]
         try:
             async with asyncio.timeout(deadline):
-                async with _client(timeout) as client:
+                async with _client(timeout, proxy=(settings.weather_proxy or None) if use_proxy else None) as client:
                     payload = await fetch(client, query)
         except HTTPException:
             raise  # the provider answered ("city not found") — that's the answer
