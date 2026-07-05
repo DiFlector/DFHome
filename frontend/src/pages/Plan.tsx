@@ -266,16 +266,18 @@ export default function Plan() {
   // the edit mode whenever it fits, and only scales down on screens smaller
   // than the layout. No upscaling and no centering — enlarging or shifting
   // the plan made the kiosk view look different from the editing view.
-  // In kiosk mode the height budget comes from the viewport (not the canvas,
-  // whose height we set below), and the canvas is then cut to the content so
-  // no empty band is left underneath the plan.
-  const KIOSK_CHROME = 96; // toolbar + paddings, mirrors the kiosk CSS calc
-  const kioskMaxH = Math.max(0, window.innerHeight - KIOSK_CHROME);
+  // In kiosk mode both budgets come from the viewport (not the canvas, whose
+  // size we set inline below), and the canvas is then cut to the content so
+  // no empty band is left under or to the right of the plan.
+  const KIOSK_CHROME_H = 96; // toolbar + paddings, mirrors the kiosk CSS calc
+  const KIOSK_CHROME_W = 688; // widgets panel (640) + paddings and gaps
+  const kioskMaxH = Math.max(0, window.innerHeight - KIOSK_CHROME_H);
+  const kioskMaxW = Math.max(0, window.innerWidth - KIOSK_CHROME_W);
   const fitScale =
     editing || !hasContent || canvasSize.w === 0
       ? 1
       : kiosk
-        ? Math.min(1, canvasSize.w / contentW, kioskMaxH / contentH)
+        ? Math.min(1, kioskMaxW / contentW, kioskMaxH / contentH)
         : Math.min(1, canvasSize.w / contentW, canvasSize.h / contentH);
 
   return (
@@ -412,7 +414,11 @@ export default function Plan() {
           <div
             className="plan-canvas"
             ref={canvasRef}
-            style={kiosk && hasContent ? { height: Math.round(contentH * fitScale) } : undefined}
+            style={
+              kiosk && hasContent
+                ? { height: Math.round(contentH * fitScale), width: Math.round(contentW * fitScale) }
+                : undefined
+            }
           >
             <div className="plan-scale" style={{ transform: `scale(${fitScale})` }}>
               {layout.rooms.map((room) => (
@@ -472,7 +478,7 @@ export default function Plan() {
         )}
       </div>
 
-      <WidgetsPanel devices={devices} />
+      <WidgetsPanel devices={devices} readOnly={kiosk} />
 
       {kiosk && autoNight && isNight && <div className="night-overlay" />}
 

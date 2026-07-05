@@ -143,10 +143,15 @@ export interface PlanLayout {
 
 // -- Widgets --------------------------------------------------------------
 
+/** Fixed tile sizes on a 4-column grid (base unit = S, height 0.5× width):
+    s — 1×0.5; m — 2×2; l — 4×2. */
+export type WidgetSize = "s" | "m" | "l";
+
 export interface WeatherWidget {
   id: string;
   kind: "weather";
   query: string;
+  size?: WidgetSize;
 }
 
 export interface RoomSensorWidget {
@@ -156,6 +161,7 @@ export interface RoomSensorWidget {
   device_name: string;
   property_instance: string;
   label: string;
+  size?: WidgetSize;
 }
 
 export interface SensorChartWidget {
@@ -166,6 +172,7 @@ export interface SensorChartWidget {
   property_instance: string;
   label: string;
   unit?: string | null;
+  size?: WidgetSize;
 }
 
 export interface StationWidget {
@@ -173,6 +180,7 @@ export interface StationWidget {
   kind: "station";
   device_id: string;
   device_name: string;
+  size?: WidgetSize;
 }
 
 export type Widget = WeatherWidget | RoomSensorWidget | SensorChartWidget | StationWidget;

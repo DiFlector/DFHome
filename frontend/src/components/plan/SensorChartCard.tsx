@@ -79,7 +79,7 @@ export default function SensorChartCard({ widget, onRemove }: Props) {
   const unit = widget.unit || (isHumidity ? "%" : "");
 
   return (
-    <div className="widget-card">
+    <div className="widget-card sensor-chart-card">
       <div className="widget-card-header">
         <span>{widget.device_name}</span>
         <button type="button" className="remove-btn" onClick={onRemove} aria-label="Удалить виджет">
@@ -103,21 +103,29 @@ export default function SensorChartCard({ widget, onRemove }: Props) {
       )}
 
       {points.length > 0 && (
-        <svg viewBox={`0 0 ${W} ${H}`} className="sensor-chart" role="img" aria-label={`График: ${widget.label}`}>
-          {ticks.map((ts) => (
-            <g key={ts}>
-              <line x1={x(ts)} y1={PT} x2={x(ts)} y2={H - PB} className="chart-grid" />
-              <text x={x(ts)} y={H - 6} className="chart-tick">
-                {new Date(ts * 1000).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
-              </text>
-            </g>
-          ))}
+        <div className="sensor-chart-area">
+          <svg
+            viewBox={`0 0 ${W} ${H}`}
+            preserveAspectRatio="none"
+            className="sensor-chart"
+            role="img"
+            aria-label={`График: ${widget.label}`}
+          >
+            {ticks.map((ts) => (
+              <g key={ts}>
+                <line x1={x(ts)} y1={PT} x2={x(ts)} y2={H - PB} className="chart-grid" />
+                <text x={x(ts)} y={H - 6} className="chart-tick">
+                  {new Date(ts * 1000).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+                </text>
+              </g>
+            ))}
 
-          <path d={linePath} className="chart-line" />
-          {points.map((p) => (
-            <circle key={p.ts} cx={x(p.ts)} cy={y(p.value)} r={2.6} fill={pointColor(p.value)} />
-          ))}
-        </svg>
+            <path d={linePath} className="chart-line" />
+            {points.map((p) => (
+              <circle key={p.ts} cx={x(p.ts)} cy={y(p.value)} r={3.5} fill={pointColor(p.value)} />
+            ))}
+          </svg>
+        </div>
       )}
     </div>
   );

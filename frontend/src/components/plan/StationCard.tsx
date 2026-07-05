@@ -53,7 +53,7 @@ export default function StationCard({ widget, onRemove }: Props) {
   };
 
   return (
-    <div className="widget-card">
+    <div className="widget-card station-card">
       <div className="widget-card-header">
         <span>{widget.device_name}</span>
         <button type="button" className="remove-btn" onClick={onRemove} aria-label="Удалить виджет">
@@ -67,7 +67,7 @@ export default function StationCard({ widget, onRemove }: Props) {
       {data && !hasTrack && <div className="widget-meta">Ничего не играет</div>}
 
       {data && hasTrack && (
-        <>
+        <div className="station-body">
           <div className="station-track">
             {data.cover_url ? (
               <img className="station-cover" src={data.cover_url} alt="" />
@@ -89,7 +89,7 @@ export default function StationCard({ widget, onRemove }: Props) {
           </div>
 
           {duration > 0 && (
-            <>
+            <div className="station-playback">
               <div
                 className="station-progress"
                 onClick={seek}
@@ -105,7 +105,7 @@ export default function StationCard({ widget, onRemove }: Props) {
                 <span>{fmtTime(progress)}</span>
                 <span>{fmtTime(duration)}</span>
               </div>
-            </>
+            </div>
           )}
 
           <div className="station-controls">
@@ -137,7 +137,7 @@ export default function StationCard({ widget, onRemove }: Props) {
               <SkipNextIcon width={14} height={14} />
             </button>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

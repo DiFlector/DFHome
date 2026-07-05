@@ -1057,30 +1057,18 @@ body.kiosk-mode .plan-canvas {
   min-height: 0;
 }
 
+/* The kiosk view is display-only: no widget edit mode, no controls. */
 body.kiosk-mode .widgets-panel .widget-add-actions,
 body.kiosk-mode .widgets-panel .widget-add-form,
-body.kiosk-mode .widgets-panel .remove-btn {
+body.kiosk-mode .widgets-panel .widget-slot-tools,
+body.kiosk-mode .widgets-panel .remove-btn,
+body.kiosk-mode .widgets-panel .widgets-panel-header button {
   display: none;
 }
 
-/* A single 390px column overflows the TV vertically, so the kiosk panel
-   widens and lays widgets out in two columns instead. Combined with body
-   overflow:hidden this keeps the page scroll-free. 640px ≈ the sidebar +
-   panel width of the normal view, so the plan canvas — and therefore the
-   plan itself — stays the same size as in editing mode. */
 body.kiosk-mode .widgets-panel {
-  width: 640px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  align-content: start;
   max-height: calc(100vh - 24px);
   overflow: hidden;
-}
-
-body.kiosk-mode .widgets-panel h3 {
-  grid-column: 1 / -1;
-  margin-bottom: 0;
 }
 
 .kiosk-toolbar-right {
@@ -1568,12 +1556,16 @@ body.kiosk-mode .plan-toolbar h2 {
 /* ---------------------------------------------------------------------
    Widgets panel
 --------------------------------------------------------------------- */
+/* Two-column grid in BOTH modes (the normal page mirrors the kiosk view).
+   640px ≈ the sidebar + old single-column panel, so the kiosk plan canvas
+   keeps the same width as the editing view. */
 .widgets-panel {
-  width: 390px;
+  width: 640px;
   flex-shrink: 0;
+  align-self: flex-start;
   position: sticky;
   top: 16px;
-  padding: 18px;
+  padding: 18px 18px 24px;
   border-radius: var(--radius-lg);
   background: var(--bg-glass);
   backdrop-filter: blur(var(--blur-glass));
@@ -1583,6 +1575,184 @@ body.kiosk-mode .plan-toolbar h2 {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.widgets-panel h3 {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.widgets-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.widgets-panel-header button {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+/* Controls only in edit mode */
+.widgets-panel .remove-btn {
+  display: none;
+}
+
+.widgets-panel.is-editing .remove-btn {
+  display: grid;
+}
+
+.widgets-panel:not(.is-editing) .widget-card-header,
+.widgets-panel:not(.is-editing) .widget-slot.size-s .widget-card-header,
+.widgets-panel:not(.is-editing) .widget-slot.size-m .station-card .widget-card-header,
+.widgets-panel:not(.is-editing) .widget-slot.size-l .station-card .widget-card-header {
+  padding-right: 0;
+}
+
+/* Shared widget grid — change --row-scale / --widget-gap to resize everything. */
+.widgets-grid {
+  --widget-gap: 12px;
+  --grid-cols: 4;
+  --row-scale: 1.35;
+  --col-w: calc((100% - (var(--grid-cols) - 1) * var(--widget-gap)) / var(--grid-cols));
+  --row-h: calc(var(--col-w) * var(--row-scale));
+  width: 100%;
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(var(--grid-rows, 1), minmax(0, var(--row-h)));
+  gap: var(--widget-gap);
+  align-content: start;
+}
+
+.widgets-grid-cell {
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid rgba(178, 190, 195, 0.16);
+  border-radius: var(--radius-sm);
+}
+
+.widget-slot {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.widgets-panel.is-editing .widget-slot {
+  outline: 1px solid rgba(178, 190, 195, 0.16);
+  outline-offset: -1px;
+  border-radius: var(--radius-sm);
+}
+
+.widget-slot > .widget-card {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  box-sizing: border-box;
+}
+
+.widget-slot.size-s > .widget-card {
+  padding: 8px 9px;
+}
+
+.widget-slot.size-s .widget-card-header {
+  font-size: 9px;
+  margin-bottom: 2px;
+  letter-spacing: 0.03em;
+  padding-right: 48px;
+  line-height: 1.15;
+}
+
+.widget-slot.size-s .widget-card-header span {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+}
+
+.widget-slot.size-s .widget-value {
+  font-size: 15px;
+  line-height: 1.15;
+  margin-top: auto;
+}
+
+.widget-slot.size-s .widget-meta {
+  display: none;
+}
+
+.widget-slot.size-s .widget-slot-tools {
+  top: 6px;
+  right: 32px;
+  gap: 2px;
+}
+
+.widget-slot.size-s .widget-tool {
+  width: 20px;
+  height: 20px;
+  font-size: 9px;
+}
+
+.widget-slot.size-s .remove-btn {
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  font-size: 13px;
+}
+
+.widget-slot.dragging {
+  opacity: 0.45;
+}
+
+.widget-slot.drag-over > .widget-card {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.widget-slot-tools {
+  position: absolute;
+  top: 10px;
+  right: 44px;
+  display: flex;
+  gap: 4px;
+}
+
+.widget-tool {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  background: var(--bg-glass-strong);
+  border: 1px solid var(--border-glass-strong);
+  border-radius: 50%;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease), border-color var(--duration-fast) var(--ease);
+}
+
+.widget-tool:hover {
+  color: var(--text-primary);
+  border-color: var(--accent);
+}
+
+.widget-drag-handle {
+  cursor: grab;
+}
+
+.widget-slot.dragging .widget-drag-handle {
+  cursor: grabbing;
 }
 
 /* position:relative is load-bearing: .remove-btn is absolutely positioned,
@@ -1632,27 +1802,54 @@ body.kiosk-mode .plan-toolbar h2 {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .widget-add-form {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 /* -- Yandex Station (now playing) widget -- */
+.station-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.widget-slot.size-m > .station-card,
+.widget-slot.size-l > .station-card {
+  height: 100%;
+}
+
+.station-card .widget-card-header {
+  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+
+.station-body {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .station-track {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
+  flex-shrink: 0;
 }
 
 .station-cover {
-  width: 56px;
-  height: 56px;
+  width: 48px;
+  height: 48px;
   flex-shrink: 0;
-  border-radius: 10px;
+  border-radius: 8px;
   object-fit: cover;
   background: var(--bg-glass-strong);
   border: 1px solid var(--border-glass);
@@ -1664,12 +1861,18 @@ body.kiosk-mode .plan-toolbar h2 {
   color: var(--text-muted);
 }
 
+.station-cover-empty svg {
+  width: 18px;
+  height: 18px;
+}
+
 .station-track-meta {
   min-width: 0;
+  flex: 1;
 }
 
 .station-title {
-  font-size: 13.5px;
+  font-size: 12.5px;
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1677,18 +1880,21 @@ body.kiosk-mode .plan-toolbar h2 {
 }
 
 .station-artist {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-muted);
-  margin-top: 2px;
+  margin-top: 1px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.station-playback {
+  flex-shrink: 0;
+}
+
 .station-progress {
   position: relative;
-  height: 5px;
-  margin-top: 10px;
+  height: 4px;
   border-radius: 999px;
   background: rgba(178, 190, 195, 0.25);
   cursor: pointer;
@@ -1704,8 +1910,8 @@ body.kiosk-mode .plan-toolbar h2 {
 .station-times {
   display: flex;
   justify-content: space-between;
-  margin-top: 4px;
-  font-size: 10.5px;
+  margin-top: 2px;
+  font-size: 9.5px;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -1713,13 +1919,15 @@ body.kiosk-mode .plan-toolbar h2 {
 .station-controls {
   display: flex;
   justify-content: center;
-  gap: 10px;
-  margin-top: 8px;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  flex-shrink: 0;
 }
 
 .station-ctrl {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   border-radius: 50%;
   background: var(--bg-glass-strong);
@@ -1741,17 +1949,277 @@ body.kiosk-mode .plan-toolbar h2 {
   cursor: not-allowed;
 }
 
-.station-ctrl-main {
-  background: var(--accent-soft);
-  color: var(--accent-strong);
+.station-ctrl svg {
+  width: 14px;
+  height: 14px;
+}
+
+.station-ctrl-main svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* S — обложка + название, без управления */
+.widget-slot.size-s .station-playback,
+.widget-slot.size-s .station-controls {
+  display: none;
+}
+
+.widget-slot.size-s .station-cover {
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+}
+
+.widget-slot.size-s .station-cover-empty svg {
+  width: 12px;
+  height: 12px;
+}
+
+.widget-slot.size-s .station-card .widget-card-header {
+  flex-shrink: 0;
+  margin-bottom: 0;
+  padding-right: 48px;
+}
+
+.widget-slot.size-s .station-card .widget-card-header span {
+  display: none;
+}
+
+.widget-slot.size-s .station-body {
+  flex: 1 1 0;
+  min-height: 0;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.widget-slot.size-s .station-track {
+  gap: 6px;
+  align-items: center;
+}
+
+.widget-slot.size-s .station-title {
+  font-size: 10px;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.2;
+}
+
+.widget-slot.size-s .station-artist {
+  display: none;
+}
+
+.widget-slot.size-m > .widget-card.station-card {
+  padding: 8px 10px;
+}
+
+.widget-slot.size-m .station-card .widget-card-header {
+  font-size: 10px;
+  margin-bottom: 2px;
+  letter-spacing: 0.03em;
+  padding-right: 48px;
+}
+
+.widget-slot.size-m .station-card .widget-card-header span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* M — обложка + мета, прогресс, управление снизу по центру */
+.widget-slot.size-m .station-body {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  gap: 4px 8px;
+  align-items: center;
+}
+
+.widget-slot.size-m .station-track {
+  display: contents;
+}
+
+.widget-slot.size-m .station-cover {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+}
+
+.widget-slot.size-m .station-cover-empty svg {
+  width: 13px;
+  height: 13px;
+}
+
+.widget-slot.size-m .station-track-meta {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+}
+
+.widget-slot.size-m .station-title {
+  font-size: 11px;
+}
+
+.widget-slot.size-m .station-artist {
+  font-size: 9.5px;
+}
+
+.widget-slot.size-m .station-playback {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.widget-slot.size-m .station-progress {
+  height: 3px;
+}
+
+.widget-slot.size-m .station-times {
+  margin-top: 1px;
+  font-size: 8.5px;
+}
+
+.widget-slot.size-m .station-controls {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 0;
+}
+
+.widget-slot.size-m .station-ctrl {
+  width: 24px;
+  height: 24px;
+}
+
+.widget-slot.size-m .station-ctrl svg {
+  width: 11px;
+  height: 11px;
+}
+
+.widget-slot.size-m .station-ctrl-main svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* L — широкий: обложка + мета, прогресс на всю ширину, управление снизу */
+.widget-slot.size-l > .widget-card.station-card {
+  padding: 10px 12px;
+}
+
+.widget-slot.size-l .station-card .widget-card-header {
+  padding-right: 48px;
+  margin-bottom: 6px;
+}
+
+.widget-slot.size-l .station-card .widget-card-header span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.widget-slot.size-l .station-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+}
+
+.widget-slot.size-l .station-track {
+  flex-shrink: 0;
+}
+
+.widget-slot.size-l .station-playback {
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.widget-slot.size-l .station-controls {
+  flex-shrink: 0;
+  margin-top: 0;
+  justify-content: center;
+  gap: 10px;
+}
+
+.widget-slot.size-l .station-cover {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+}
+
+.widget-slot.size-l .station-title {
+  font-size: 14px;
+}
+
+.widget-slot.size-l .station-artist {
+  font-size: 12px;
+}
+
+.widget-slot.size-l .station-ctrl {
+  width: 32px;
+  height: 32px;
+}
+
+.widget-slot.size-l .station-progress {
+  height: 5px;
+}
+
+.widget-slot.size-l .station-times {
+  font-size: 10.5px;
+  margin-top: 4px;
 }
 
 /* -- Sensor history chart widget -- */
-.sensor-chart {
-  display: block;
+.sensor-chart-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sensor-chart-card .widget-card-header {
+  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+
+.sensor-chart-card .chart-legend {
+  flex-shrink: 0;
+  margin-bottom: 0;
+  font-size: 12px;
+}
+
+.sensor-chart-card .loading,
+.sensor-chart-card .widget-error,
+.sensor-chart-card .widget-meta {
+  flex-shrink: 0;
+}
+
+.sensor-chart-area {
+  flex: 1 1 0;
+  min-height: 0;
+  position: relative;
   width: 100%;
-  height: auto;
-  margin-top: 6px;
+  margin-top: 4px;
+}
+
+.widget-slot.size-m .sensor-chart-area,
+.widget-slot.size-l .sensor-chart-area {
+  min-height: 100px;
+}
+
+.sensor-chart-area > .sensor-chart {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .chart-legend {
@@ -1789,16 +2257,16 @@ body.kiosk-mode .plan-toolbar h2 {
 
 .chart-tick {
   fill: var(--text-muted);
-  font-size: 9px;
+  font-size: 11px;
   text-anchor: middle;
 }
 
 .chart-line {
   fill: none;
   stroke: var(--accent);
-  stroke-width: 1.5;
+  stroke-width: 2;
   stroke-linejoin: round;
-  opacity: 0.8;
+  opacity: 0.85;
 }
 
 .widget-add-form input,
