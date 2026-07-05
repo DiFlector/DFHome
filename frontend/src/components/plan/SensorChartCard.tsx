@@ -1,85 +1,279 @@
 import { useQuery } from "@tanstack/react-query";
 import { endpoints } from "../../api/client";
-import type { HistoryPoint, SensorChartWidget } from "../../api/types";
+import type { HistoryPoint, SensorChartWidget, WidgetSize } from "../../api/types";
+import { sensorPropertyVariant, type SensorPropertyVariant } from "../icons";
+import { metricNormBand, metricStatus, metricStatusColor } from "../../utils/metricStatus";
 
 interface Props {
   widget: SensorChartWidget;
+  size: WidgetSize;
   onRemove: () => void;
 }
 
-const WINDOW_HOURS = 3;
-const TICK_STEP_HOURS = 1;
+const W = 280;
+const H = 120;
+const PT = 4;
+const PB = 4;
+const PL = 2;
+const PR = 2;
 
-// Chart geometry (viewBox units; the SVG itself is fluid-width).
-const W = 340;
-const H = 150;
-const PT = 10;
-const PB = 20;
-const PL = 6;
-const PR = 6;
-
-const BLUE = { r: 9, g: 132, b: 227 }; // var(--accent)
-const RED = { r: 235, g: 59, b: 90 };
-const ACCENT = `rgb(${BLUE.r}, ${BLUE.g}, ${BLUE.b})`;
-
-// Humidity comfort band is 40–60%: inside it points stay accent-blue, and
-// the further outside, the redder they get (fully red 20 points out).
-function humidityColor(v: number): string {
-  const deviation = v > 60 ? Math.min(1, (v - 60) / 20) : v < 40 ? Math.min(1, (40 - v) / 20) : 0;
-  const mix = (a: number, b: number) => Math.round(a + (b - a) * deviation);
-  return `rgb(${mix(BLUE.r, RED.r)}, ${mix(BLUE.g, RED.g)}, ${mix(BLUE.b, RED.b)})`;
+function windowHoursForSize(size: WidgetSize): number {
+  return size === "l" ? 6 : 3;
 }
 
-function domain(points: HistoryPoint[], isHumidity: boolean): [number, number] {
+function tickStepHours(windowHours: number): number {
+  return windowHours <= 3 ? 1 : 2;
+}
+
+function fmtHoursShort(n: number): string {
+  return `${n} ч.`;
+}
+
+function domain(points: HistoryPoint[], variant: SensorPropertyVariant): [number, number] {
   const values = points.map((p) => p.value);
-  let lo = Math.min(...values);
-  let hi = Math.max(...values);
-  if (isHumidity) {
-    // Keep the 40/60 thresholds in view so the red/blue coloring reads.
-    lo = Math.min(lo - 3, 35);
-    hi = Math.max(hi + 3, 65);
-  } else {
-    lo -= 1;
-    hi += 1;
+  const dataLo = Math.min(...values);
+  const dataHi = Math.max(...values);
+  const spread = dataHi - dataLo;
+  const norm = metricNormBand(variant);
+
+  let lo: number;
+  let hi: number;
+
+  if (variant === "battery") {
+    lo = Math.min(dataLo - 2, norm?.lo ?? 96);
+    hi = 99.9;
+    return [lo, hi];
   }
+
+  if (variant === "humidity") {
+    if (spread < 6) {
+      const mid = (dataLo + dataHi) / 2;
+      lo = mid - 10;
+      hi = mid + 10;
+    } else {
+      const pad = Math.max(3, spread * 0.15);
+      lo = dataLo - pad;
+      hi = dataHi + pad;
+    }
+  } else if (spread < 0.15) {
+    const pad = Math.max(0.8, Math.abs(dataLo) * 0.04 || 0.8);
+    lo = dataLo - pad;
+    hi = dataHi + pad;
+  } else {
+    const pad = Math.max(0.4, spread * 0.1);
+    lo = dataLo - pad;
+    hi = dataHi + pad;
+  }
+
+  if (norm) {
+    const edge = variant === "humidity" ? 2 : variant === "temp" ? 0.5 : 0;
+    lo = Math.min(lo, norm.lo - edge);
+    hi = Math.max(hi, norm.hi + edge);
+  }
+
   return [lo, hi];
 }
 
-export default function SensorChartCard({ widget, onRemove }: Props) {
+function plotValue(v: number, lo: number, hi: number, variant: SensorPropertyVariant): number {
+  if (variant === "battery") return Math.min(v, hi);
+  return v;
+}
+
+function fmtTick(ts: number): string {
+  return new Date(ts * 1000).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+}
+
+function fmtAxis(v: number, variant: SensorPropertyVariant): string {
+  if (variant === "battery") return v.toFixed(1);
+  if (variant === "humidity") return `${Math.round(v)}`;
+  return v.toFixed(1);
+}
+
+function fmtValue(v: number, variant: SensorPropertyVariant): string {
+  if (variant === "humidity") return String(Math.round(v));
+  if (variant === "battery") return Number.isInteger(v) ? String(v) : v.toFixed(1);
+  return v.toFixed(1);
+}
+
+function metaBlock(label: string, normLabel: string | null, windowHours: number, align: "end" | "start" = "end") {
+  return (
+    <div className={`sensor-chart-head-meta sensor-chart-head-meta--${align}`}>
+      <span className="sensor-chart-metric">
+        {label}{" "}
+        <span className="sensor-chart-window">за {fmtHoursShort(windowHours)}</span>
+      </span>
+      {normLabel && <span className="sensor-chart-comfort-inline">Норма {normLabel}</span>}
+    </div>
+  );
+}
+
+export default function SensorChartCard({ widget, size, onRemove }: Props) {
+  const windowHours = windowHoursForSize(size);
+  const tickStep = tickStepHours(windowHours);
+
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["history", widget.device_id],
-    queryFn: () => endpoints.getHistory(widget.device_id, WINDOW_HOURS),
+    queryKey: ["history", widget.device_id, windowHours],
+    queryFn: () => endpoints.getHistory(widget.device_id, windowHours),
     refetchInterval: 5 * 60 * 1000,
   });
 
   const instance = widget.property_instance;
-  const isHumidity = instance === "humidity";
-  const points = data?.[instance] ?? [];
+  const variant = sensorPropertyVariant(instance);
+  const norm = metricNormBand(variant);
 
   const nowSec = Date.now() / 1000;
-  const start = nowSec - WINDOW_HOURS * 3600;
-  const x = (ts: number) => PL + ((ts - start) / (WINDOW_HOURS * 3600)) * (W - PL - PR);
+  const start = nowSec - windowHours * 3600;
+  const points = (data?.[instance] ?? []).filter((p) => p.ts >= start);
 
-  const [lo, hi] = points.length ? domain(points, isHumidity) : [0, 1];
-  const y = (v: number) => PT + (1 - (v - lo) / (hi - lo || 1)) * (H - PT - PB);
+  const plotW = W - PL - PR;
+  const plotH = H - PT - PB;
+  const plotBottom = H - PB;
 
-  const linePath = points
-    .map((p, i) => `${i ? "L" : "M"}${x(p.ts).toFixed(1)},${y(p.value).toFixed(1)}`)
-    .join(" ");
+  const x = (ts: number) => PL + ((ts - start) / (windowHours * 3600)) * plotW;
+  const xPct = (ts: number) => `${(((ts - start) / (windowHours * 3600)) * 100).toFixed(2)}%`;
 
-  const pointColor = (v: number) => (isHumidity ? humidityColor(v) : ACCENT);
+  const [lo, hi] = points.length ? domain(points, variant) : [0, 1];
+  const y = (v: number) => PT + (1 - (plotValue(v, lo, hi, variant) - lo) / (hi - lo || 1)) * plotH;
 
-  // Time gridlines at a fixed hour step across the window.
+  const coords = points.map((p) => ({ ...p, cx: x(p.ts), cy: y(p.value) }));
+
+  const linePath = coords.map((p, i) => `${i ? "L" : "M"}${p.cx.toFixed(1)},${p.cy.toFixed(1)}`).join(" ");
+
+  const areaPath =
+    coords.length > 0
+      ? `${linePath} L${coords[coords.length - 1].cx.toFixed(1)},${plotBottom} L${coords[0].cx.toFixed(1)},${plotBottom} Z`
+      : "";
+
   const ticks = Array.from(
-    { length: WINDOW_HOURS / TICK_STEP_HOURS + 1 },
-    (_, i) => start + i * TICK_STEP_HOURS * 3600,
+    { length: windowHours / tickStep + 1 },
+    (_, i) => start + i * tickStep * 3600,
   );
 
+  const yTicks = [hi, lo];
   const last = points[points.length - 1]?.value;
-  const unit = widget.unit || (isHumidity ? "%" : "");
+  const unit = widget.unit || (variant === "humidity" ? "%" : variant === "temp" ? "°C" : "");
+  const valueStatus = last !== undefined ? metricStatus(variant, last) : "ok";
+  const strokeColor = metricStatusColor(valueStatus);
+
+  const showComfortZone = norm !== null && lo < norm.hi && hi > norm.lo;
+  const comfortTop = norm ? y(Math.min(hi, norm.hi)) : 0;
+  const comfortBottom = norm ? y(Math.max(lo, norm.lo)) : 0;
+  const comfortHeight = Math.max(0, comfortBottom - comfortTop);
+
+  const valueBlock = (
+    <div className="sensor-chart-current">
+      {last !== undefined ? (
+        <>
+          {fmtValue(last, variant)}
+          <span className="sensor-chart-unit">{unit}</span>
+        </>
+      ) : (
+        "—"
+      )}
+    </div>
+  );
+
+  const lastCoord = coords[coords.length - 1];
+
+  const chartBlock =
+    points.length > 0 ? (
+      <div className="sensor-chart-frame">
+        <div className="sensor-chart-yaxis" aria-hidden>
+          {yTicks.map((v) => (
+            <span key={v}>{fmtAxis(v, variant)}</span>
+          ))}
+        </div>
+
+        <div className="sensor-chart-plot">
+          <svg
+            viewBox={`0 0 ${W} ${H}`}
+            preserveAspectRatio="none"
+            className="sensor-chart-svg"
+            role="img"
+            aria-label={`График: ${widget.label}`}
+          >
+            {showComfortZone && norm && (
+              <>
+                <rect x={PL} y={comfortTop} width={plotW} height={comfortHeight} className="chart-comfort-zone" rx={2} />
+                <line
+                  x1={PL}
+                  y1={comfortTop}
+                  x2={W - PR}
+                  y2={comfortTop}
+                  className="chart-comfort-edge"
+                  vectorEffect="non-scaling-stroke"
+                />
+                <line
+                  x1={PL}
+                  y1={comfortBottom}
+                  x2={W - PR}
+                  y2={comfortBottom}
+                  className="chart-comfort-edge"
+                  vectorEffect="non-scaling-stroke"
+                />
+              </>
+            )}
+
+            {[0.25, 0.5, 0.75].map((t) => (
+              <line
+                key={t}
+                x1={PL}
+                y1={PT + plotH * t}
+                x2={W - PR}
+                y2={PT + plotH * t}
+                className="chart-grid-h"
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
+
+            {ticks.map((ts) => (
+              <line
+                key={ts}
+                x1={x(ts)}
+                y1={PT}
+                x2={x(ts)}
+                y2={plotBottom}
+                className="chart-grid-v"
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
+
+            {areaPath && <path d={areaPath} className="chart-area" style={{ fill: strokeColor, opacity: 0.22 }} />}
+            {linePath && (
+              <path d={linePath} className="chart-line" style={{ stroke: strokeColor }} vectorEffect="non-scaling-stroke" />
+            )}
+          </svg>
+          {lastCoord && (
+            <span
+              className="chart-last-dot-mark"
+              style={{
+                left: `${(lastCoord.cx / W) * 100}%`,
+                top: `${(lastCoord.cy / H) * 100}%`,
+                backgroundColor: strokeColor,
+              }}
+            />
+          )}
+        </div>
+
+        <div className="sensor-chart-xaxis" aria-hidden>
+          {ticks.map((ts, i) => (
+            <span
+              key={ts}
+              className="sensor-chart-tick"
+              style={{ left: xPct(ts) }}
+              data-edge={i === 0 ? "start" : i === ticks.length - 1 ? "end" : undefined}
+            >
+              {fmtTick(ts)}
+            </span>
+          ))}
+        </div>
+      </div>
+    ) : null;
+
+  const normLabel = norm?.label ?? null;
 
   return (
-    <div className="widget-card sensor-chart-card">
+    <div className={`widget-card sensor-chart-card sensor-chart-card--${variant} sensor-chart-card--${size} metric-${valueStatus}`}>
       <div className="widget-card-header">
         <span>{widget.device_name}</span>
         <button type="button" className="remove-btn" onClick={onRemove} aria-label="Удалить виджет">
@@ -87,45 +281,28 @@ export default function SensorChartCard({ widget, onRemove }: Props) {
         </button>
       </div>
 
-      <div className="chart-legend">
-        <span>
-          <span className="chart-legend-dot" style={{ background: last !== undefined ? pointColor(last) : ACCENT }} />
-          {widget.label}
-          {last !== undefined && `: ${last}${unit}`}
-        </span>
-        <span className="chart-legend-window">за {WINDOW_HOURS} ч</span>
-      </div>
+      {size === "l" ? (
+        <div className="sensor-chart-body-l">
+          <div className="sensor-chart-side">
+            {valueBlock}
+            {metaBlock(widget.label, normLabel, windowHours, "start")}
+          </div>
+          {chartBlock}
+        </div>
+      ) : (
+        <>
+          <div className="sensor-chart-head">
+            {valueBlock}
+            {metaBlock(widget.label, normLabel, windowHours, "end")}
+          </div>
+          {chartBlock}
+        </>
+      )}
 
       {isLoading && <span className="loading">…</span>}
       {isError && <span className="widget-error">Не удалось загрузить историю</span>}
       {!isLoading && !isError && points.length === 0 && (
-        <span className="widget-meta">Данные накапливаются — точки появляются каждые 15 минут.</span>
-      )}
-
-      {points.length > 0 && (
-        <div className="sensor-chart-area">
-          <svg
-            viewBox={`0 0 ${W} ${H}`}
-            preserveAspectRatio="none"
-            className="sensor-chart"
-            role="img"
-            aria-label={`График: ${widget.label}`}
-          >
-            {ticks.map((ts) => (
-              <g key={ts}>
-                <line x1={x(ts)} y1={PT} x2={x(ts)} y2={H - PB} className="chart-grid" />
-                <text x={x(ts)} y={H - 6} className="chart-tick">
-                  {new Date(ts * 1000).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
-                </text>
-              </g>
-            ))}
-
-            <path d={linePath} className="chart-line" />
-            {points.map((p) => (
-              <circle key={p.ts} cx={x(p.ts)} cy={y(p.value)} r={3.5} fill={pointColor(p.value)} />
-            ))}
-          </svg>
-        </div>
+        <span className="widget-meta sensor-chart-empty">Данные накапливаются — точки появляются каждые 15 минут.</span>
       )}
     </div>
   );

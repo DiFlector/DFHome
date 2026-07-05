@@ -54,6 +54,17 @@
   --info: var(--c-faded-poster);
   --info-soft: rgba(129, 236, 236, 0.14);
 
+  /* metric types — temp / humidity / battery (shared across widgets) */
+  --metric-temp: var(--c-orangeville);
+  --metric-humidity: var(--c-green-darner-tail);
+  --metric-battery: var(--c-mint-leaf);
+  --metric-temp-soft: rgba(225, 112, 85, 0.16);
+  --metric-humidity-soft: rgba(116, 185, 255, 0.16);
+  --metric-battery-soft: rgba(0, 184, 148, 0.16);
+  --metric-temp-bg: rgba(225, 112, 85, 0.08);
+  --metric-humidity-bg: rgba(116, 185, 255, 0.08);
+  --metric-battery-bg: rgba(0, 184, 148, 0.08);
+
   --radius-sm: 10px;
   --radius-md: 16px;
   --radius-lg: 22px;
@@ -65,6 +76,77 @@
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 
   font-family: "Work Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* Value colors by comfort level — shared across weather, sensors, charts */
+.metric-good .widget-value,
+.metric-good.weather-m-temp,
+.metric-good.sensor-chart-current,
+.metric-good .sensor-chart-current {
+  color: var(--success);
+}
+
+.metric-ok .widget-value,
+.metric-ok.weather-m-temp,
+.metric-ok.sensor-chart-current,
+.metric-ok .sensor-chart-current {
+  color: var(--warning);
+}
+
+.metric-bad .widget-value,
+.metric-bad.weather-m-temp,
+.metric-bad.sensor-chart-current,
+.metric-bad .sensor-chart-current {
+  color: var(--danger);
+}
+
+.metric-good.weather-m-stat {
+  color: var(--success);
+  font-weight: 600;
+}
+
+.metric-ok.weather-m-stat {
+  color: var(--warning);
+  font-weight: 600;
+}
+
+.metric-bad.weather-m-stat {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.metric-good.weather-m-stat svg {
+  color: var(--success);
+}
+
+.metric-ok.weather-m-stat svg {
+  color: var(--warning);
+}
+
+.metric-bad.weather-m-stat svg {
+  color: var(--danger);
+}
+
+.metric-good .sensor-s-icon,
+.metric-good .sensor-m-icon {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.metric-ok .sensor-s-icon,
+.metric-ok .sensor-m-icon {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.metric-bad .sensor-s-icon,
+.metric-bad .sensor-m-icon {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.weather-m-degree {
+  color: inherit;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1728,32 +1810,32 @@ body.kiosk-mode .plan-toolbar h2 {
   flex-direction: row;
   align-items: center;
   justify-content: flex-start;
-  gap: 8px;
-  padding-top: 1px;
+  gap: 10px;
+  padding-top: 2px;
 }
 
 .sensor-s-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
   display: grid;
   place-items: center;
   flex-shrink: 0;
 }
 
 .sensor-s--temp .sensor-s-icon {
-  background: rgba(225, 112, 85, 0.16);
-  color: var(--c-orangeville);
+  background: var(--metric-temp-soft);
+  color: var(--metric-temp);
 }
 
 .sensor-s--humidity .sensor-s-icon {
-  background: rgba(116, 185, 255, 0.16);
-  color: var(--accent-strong);
+  background: var(--metric-humidity-soft);
+  color: var(--metric-humidity);
 }
 
 .sensor-s--battery .sensor-s-icon {
-  background: rgba(0, 184, 148, 0.16);
-  color: var(--success);
+  background: var(--metric-battery-soft);
+  color: var(--metric-battery);
 }
 
 .sensor-s--default .sensor-s-icon {
@@ -1769,12 +1851,12 @@ body.kiosk-mode .plan-toolbar h2 {
 }
 
 .widget-slot.size-s .sensor-s .widget-value {
-  font-size: 20px;
+  font-size: 26px;
   line-height: 1;
 }
 
 .sensor-s-unit {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-muted);
 }
@@ -1875,7 +1957,7 @@ body.kiosk-mode .plan-toolbar h2 {
 .weather-m-temp {
   display: flex;
   align-items: center;
-  font-size: 36px;
+  font-size: 44px;
   font-weight: 700;
   font-family: "Outfit", sans-serif;
   line-height: 1;
@@ -1885,7 +1967,7 @@ body.kiosk-mode .plan-toolbar h2 {
 .weather-m-degree {
   font-size: 0.6em;
   font-weight: 600;
-  opacity: 0.8;
+  opacity: 0.85;
   vertical-align: super;
 }
 
@@ -1936,7 +2018,7 @@ body.kiosk-mode .plan-toolbar h2 {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
-  color: var(--text-muted);
+  color: inherit;
 }
 
 .weather-m-forecast {
@@ -1953,7 +2035,7 @@ body.kiosk-mode .plan-toolbar h2 {
 }
 
 .widget-slot.size-l .weather-m-temp {
-  font-size: 42px;
+  font-size: 50px;
 }
 
 .widget-slot.size-l .weather-m-icon svg {
@@ -2028,30 +2110,9 @@ body.kiosk-mode .plan-toolbar h2 {
   height: 26px;
 }
 
-.sensor-m--temp .sensor-m-icon {
-  background: rgba(225, 112, 85, 0.16);
-  color: var(--c-orangeville);
-}
-
-.sensor-m--humidity .sensor-m-icon {
-  background: rgba(116, 185, 255, 0.16);
-  color: var(--accent-strong);
-}
-
-.sensor-m--battery .sensor-m-icon {
-  background: rgba(0, 184, 148, 0.16);
-  color: var(--success);
-}
-
 .sensor-m--default .sensor-m-icon {
   background: rgba(178, 190, 195, 0.14);
   color: var(--text-secondary);
-}
-
-.sensor-m-bottom {
-  flex-shrink: 0;
-  padding-top: 7px;
-  border-top: 1px solid rgba(178, 190, 195, 0.18);
 }
 
 .sensor-m-label {
@@ -2066,6 +2127,32 @@ body.kiosk-mode .plan-toolbar h2 {
   padding: 6px 10px;
   border-radius: 6px;
   background: rgba(178, 190, 195, 0.1);
+  flex: 1;
+  min-width: 0;
+}
+
+.sensor-m-norm-wrap {
+  flex-shrink: 0;
+  padding: 0 2px 6px;
+}
+
+.sensor-m-bottom {
+  flex-shrink: 0;
+  padding-top: 7px;
+  border-top: 1px solid rgba(178, 190, 195, 0.18);
+}
+
+.sensor-m-norm {
+  align-self: flex-start;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--success);
+  background: var(--success-soft);
+  border: 1px solid rgba(0, 184, 148, 0.35);
+  border-radius: 4px;
+  padding: 2px 6px;
 }
 
 .widget-slot.size-m .sensor-m-value .widget-value {
@@ -2710,6 +2797,22 @@ body.kiosk-mode .plan-toolbar h2 {
 }
 
 /* -- Sensor history chart widget -- */
+.widget-slot.size-m > .widget-card.sensor-chart-card,
+.widget-slot.size-l > .widget-card.sensor-chart-card {
+  padding: 8px 10px 10px;
+  height: 100%;
+  gap: 0;
+}
+
+.widget-slot.size-m .sensor-chart-card .widget-card-header,
+.widget-slot.size-l .sensor-chart-card .widget-card-header {
+  font-size: 10px;
+  margin-bottom: 6px;
+  letter-spacing: 0.03em;
+  padding-right: 48px;
+  line-height: 1.2;
+}
+
 .sensor-chart-card {
   display: flex;
   flex-direction: column;
@@ -2717,14 +2820,7 @@ body.kiosk-mode .plan-toolbar h2 {
 }
 
 .sensor-chart-card .widget-card-header {
-  margin-bottom: 4px;
   flex-shrink: 0;
-}
-
-.sensor-chart-card .chart-legend {
-  flex-shrink: 0;
-  margin-bottom: 0;
-  font-size: 12px;
 }
 
 .sensor-chart-card .loading,
@@ -2733,20 +2829,241 @@ body.kiosk-mode .plan-toolbar h2 {
   flex-shrink: 0;
 }
 
-.sensor-chart-area {
+.sensor-chart-empty {
+  margin-top: 4px;
+  font-size: 11px;
+}
+
+/* Head: current value + meta — same layout for all M charts */
+.sensor-chart-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto;
+  align-items: end;
+  gap: 4px 10px;
+  flex-shrink: 0;
+  margin-bottom: 8px;
+}
+
+.sensor-chart-head .sensor-chart-current {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+}
+
+.sensor-chart-head .sensor-chart-head-meta {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.sensor-chart-current {
+  font-family: "Outfit", sans-serif;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.widget-slot.size-l .sensor-chart-current {
+  font-size: 36px;
+}
+
+.widget-slot.size-l .sensor-chart-head .sensor-chart-current {
+  font-size: 36px;
+}
+
+.sensor-chart-unit {
+  font-size: 0.45em;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-left: 1px;
+}
+
+.sensor-chart-head-meta {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 3px;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.sensor-chart-head-meta--end {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.sensor-chart-head-meta--start {
+  align-items: flex-start;
+  text-align: left;
+}
+
+.sensor-chart-metric {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  line-height: 1.25;
+}
+
+.sensor-chart-metric .sensor-chart-window {
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-muted);
+}
+
+.sensor-chart-comfort-inline {
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--success);
+  background: var(--success-soft);
+  border: 1px solid rgba(0, 184, 148, 0.35);
+  border-radius: 4px;
+  padding: 2px 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.sensor-chart-window {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Chart frame */
+.sensor-chart-body-l {
   flex: 1 1 0;
   min-height: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.sensor-chart-side {
+  flex-shrink: 0;
+  width: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 0;
+  align-self: flex-start;
+}
+
+.sensor-chart-side-meta {
+  display: contents;
+}
+
+.widget-slot.size-l .sensor-chart-body-l .sensor-chart-current {
+  font-size: 44px;
+}
+
+.widget-slot.size-l .sensor-chart-body-l .sensor-chart-metric {
+  max-width: none;
+  font-size: 12px;
+}
+
+.widget-slot.size-l .sensor-chart-body-l .sensor-chart-metric .sensor-chart-window {
+  font-size: 11px;
+}
+
+.widget-slot.size-l .sensor-chart-body-l .sensor-chart-comfort-inline {
+  font-size: 10px;
+  padding: 3px 7px;
+}
+
+.widget-slot.size-l .sensor-chart-yaxis {
+  font-size: 9px;
+}
+
+.widget-slot.size-l .sensor-chart-tick {
+  font-size: 9px;
+}
+
+.widget-slot.size-l .sensor-chart-body-l .sensor-chart-frame {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  margin-bottom: 0;
+  max-height: 100%;
+}
+
+/* Chart frame */
+.sensor-chart-frame {
+  flex: 1 1 0;
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  grid-template-rows: 1fr 15px;
+  gap: 2px 3px;
+  padding: 6px 6px 5px;
+  border-radius: 8px;
+  border: 1px solid rgba(178, 190, 195, 0.14);
+  background: rgba(178, 190, 195, 0.06);
+  min-width: 0;
+  overflow: hidden;
   position: relative;
-  width: 100%;
-  margin-top: 4px;
 }
 
-.widget-slot.size-m .sensor-chart-area,
-.widget-slot.size-l .sensor-chart-area {
-  min-height: 100px;
+.widget-slot.size-m .sensor-chart-frame {
+  min-height: 80px;
 }
 
-.sensor-chart-area > .sensor-chart {
+.widget-slot.size-l .sensor-chart-frame {
+  min-height: 0;
+  height: 100%;
+}
+
+.widget-slot.size-l .sensor-chart-head {
+  margin-bottom: 8px;
+}
+
+.sensor-chart-card--humidity .sensor-chart-frame {
+  background: var(--metric-humidity-bg);
+  border-color: rgba(116, 185, 255, 0.2);
+}
+
+.sensor-chart-card--temp .sensor-chart-frame {
+  background: var(--metric-temp-bg);
+  border-color: rgba(225, 112, 85, 0.2);
+}
+
+.sensor-chart-card--battery .sensor-chart-frame {
+  background: var(--metric-battery-bg);
+  border-color: rgba(0, 184, 148, 0.2);
+}
+
+.sensor-chart-yaxis {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  font-size: 8px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  line-height: 1;
+  padding: 0;
+  letter-spacing: -0.02em;
+}
+
+.sensor-chart-plot {
+  grid-column: 2;
+  grid-row: 1;
+  position: relative;
+  min-height: 0;
+  min-width: 0;
+}
+
+.sensor-chart-svg {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -2754,51 +3071,79 @@ body.kiosk-mode .plan-toolbar h2 {
   display: block;
 }
 
-.chart-legend {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
+.sensor-chart-xaxis {
+  grid-column: 2;
+  grid-row: 2;
+  position: relative;
+  height: 15px;
 }
 
-.chart-legend > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.chart-legend-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-}
-
-.chart-legend-window {
-  margin-left: auto;
-  font-size: 11px;
-  font-weight: 400;
+.sensor-chart-tick {
+  position: absolute;
+  top: 2px;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
   color: var(--text-muted);
+  white-space: nowrap;
 }
 
-.chart-grid {
-  stroke: var(--border-glass);
+.sensor-chart-tick[data-edge="start"] {
+  transform: translateX(0);
+}
+
+.sensor-chart-tick[data-edge="end"] {
+  left: auto !important;
+  right: 0;
+  transform: translateX(0);
+}
+
+/* SVG layers */
+.chart-comfort-zone {
+  fill: rgba(0, 184, 148, 0.18);
+  stroke: rgba(0, 184, 148, 0.4);
+  stroke-width: 0.6;
+}
+
+.chart-comfort-edge {
+  stroke: rgba(0, 184, 148, 0.65);
+  stroke-width: 1;
+  stroke-dasharray: 5 4;
+}
+
+.chart-comfort-mark {
+  display: none;
+}
+
+.chart-grid-h {
+  stroke: rgba(178, 190, 195, 0.12);
   stroke-width: 1;
 }
 
-.chart-tick {
-  fill: var(--text-muted);
-  font-size: 11px;
-  text-anchor: middle;
+.chart-grid-v {
+  stroke: rgba(178, 190, 195, 0.18);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
 }
 
 .chart-line {
   fill: none;
-  stroke: var(--accent);
   stroke-width: 2;
   stroke-linejoin: round;
-  opacity: 0.85;
+  stroke-linecap: round;
+}
+
+.chart-last-dot-mark {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  border: 1.5px solid var(--bg-glass-strong);
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 2;
 }
 
 .widget-add-form input,

@@ -13,6 +13,7 @@ import type {
 } from "../../api/types";
 import { CloudIcon, CloudLightningIcon, CloudRainIcon, CloudSnowIcon, DropletIcon, GripIcon, sensorPropertyIcon, sensorPropertyVariant, SunIcon, WindIcon } from "../icons";
 import SensorChartCard from "./SensorChartCard";
+import { metricNormBand, metricStatus } from "../../utils/metricStatus";
 import StationCard from "./StationCard";
 
 interface Props {
@@ -366,7 +367,7 @@ function WeatherWidgetCard({
       {data && (size === "m" || size === "l") ? (
         <div className="widget-body weather-m">
           <div className="weather-m-top">
-            <div className="weather-m-temp">
+            <div className={`weather-m-temp metric-${metricStatus("temp", data.temperature ?? 0)}`}>
               {Math.round(data.temperature ?? 0)}
               <span className="weather-m-degree">°</span>
             </div>
@@ -382,7 +383,7 @@ function WeatherWidgetCard({
           </div>
           <div className="weather-m-bottom">
             <div className="weather-m-stats">
-              <span className="weather-m-stat">
+              <span className={`weather-m-stat metric-${metricStatus("humidity", data.humidity ?? 0)}`}>
                 <DropletIcon width={14} height={14} />
                 {data.humidity}%
               </span>
@@ -396,10 +397,16 @@ function WeatherWidgetCard({
         </div>
       ) : (
         data && (
-          <div className="widget-body">
-            <div className="widget-value">{Math.round(data.temperature ?? 0)}°C</div>
+          <div className="widget-body weather-s">
+            <div className={`widget-value metric-${metricStatus("temp", data.temperature ?? 0)}`}>
+              {Math.round(data.temperature ?? 0)}°C
+            </div>
             <div className="widget-meta">
-              Влажность {data.humidity}% · Ветер {data.wind_speed} км/ч
+              <span className={`metric-${metricStatus("humidity", data.humidity ?? 0)}`}>
+                Влажность {data.humidity}%
+              </span>
+              {" · "}
+              Ветер {data.wind_speed} км/ч
             </div>
             <div className="widget-meta">{rainSummary(data)}</div>
           </div>
@@ -423,6 +430,10 @@ function RoomSensorWidgetCard({
   const device = devices.find((d) => d.id === widget.device_id);
   const prop = device?.properties.find((p) => p.instance === widget.property_instance);
   const sensorVariant = sensorPropertyVariant(widget.property_instance);
+  const numValue =
+    typeof prop?.value === "number" ? prop.value : prop?.value != null ? Number(prop.value) : NaN;
+  const valueStatus = Number.isFinite(numValue) ? metricStatus(sensorVariant, numValue) : "ok";
+  const norm = metricNormBand(sensorVariant);
 
   return (
     <div className="widget-card">
@@ -433,7 +444,7 @@ function RoomSensorWidgetCard({
         </button>
       </div>
       {size === "m" || size === "l" ? (
-        <div className={`widget-body sensor-m sensor-m--${sensorVariant}`}>
+        <div className={`widget-body sensor-m sensor-m--${sensorVariant} metric-${valueStatus}`}>
           <div className="sensor-m-top">
             <div className="sensor-m-value">
               <span className="widget-value">{prop ? String(prop.value) : "—"}</span>
@@ -443,14 +454,19 @@ function RoomSensorWidgetCard({
               {sensorPropertyIcon(widget.property_instance)}
             </div>
           </div>
+          {norm && (
+            <div className="sensor-m-norm-wrap">
+              <span className="sensor-m-norm">Норма {norm.label}</span>
+            </div>
+          )}
           <div className="sensor-m-bottom">
             <div className="sensor-m-label">{widget.device_name}</div>
           </div>
         </div>
       ) : (
-        <div className={`widget-body sensor-s sensor-s--${sensorVariant}`}>
+        <div className={`widget-body sensor-s sensor-s--${sensorVariant} metric-${valueStatus}`}>
           <div className="sensor-s-icon" aria-hidden>
-            {sensorPropertyIcon(widget.property_instance, { width: 16, height: 16 })}
+            {sensorPropertyIcon(widget.property_instance, { width: 20, height: 20 })}
           </div>
           <div className="sensor-s-value">
             <span className="widget-value">{prop ? String(prop.value) : "—"}</span>
@@ -772,7 +788,7 @@ export default function WidgetsPanel({ devices, readOnly = false }: Props) {
           {w.kind === "weather" ? (
             <WeatherWidgetCard widget={w} size={size} onRemove={() => removeWidget(w.id)} />
           ) : w.kind === "sensor_chart" ? (
-            <SensorChartCard widget={w} onRemove={() => removeWidget(w.id)} />
+            <SensorChartCard widget={w} size={size} onRemove={() => removeWidget(w.id)} />
           ) : w.kind === "station" ? (
             <StationCard widget={w} size={size} onRemove={() => removeWidget(w.id)} />
           ) : (

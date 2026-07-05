@@ -1,7 +1,8 @@
 import { useDrag } from "../../hooks/useDrag";
 import type { DeviceView, PlanRoom } from "../../api/types";
+import type { MetricStatus } from "../../utils/metricStatus";
 
-export type ComfortLevel = "good" | "ok" | "bad";
+export type ComfortLevel = MetricStatus;
 
 export interface RoomComfort {
   level: ComfortLevel;
@@ -40,7 +41,8 @@ export function roomComfort(devices: DeviceView[]): RoomComfort | null {
     worst = Math.max(worst, bandLevel(h, 40, 60, 10));
     parts.push(`${Math.round(h)}%`);
   }
-  return { level: (["good", "ok", "bad"] as const)[worst], text: parts.join(" · ") };
+  const level = (["good", "ok", "bad"] as const)[worst];
+  return { level, text: parts.join(" · ") };
 }
 
 interface Props {
