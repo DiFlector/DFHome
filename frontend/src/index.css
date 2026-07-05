@@ -1337,12 +1337,13 @@ body.kiosk-mode .content {
   padding: 0 4px;
 }
 
-/* Height cap: viewport minus app padding, toolbar and its margin. Plan.tsx
-   sets the actual height inline, cut to the plan's content so no empty band
-   is left under the plan; min-height must not push it back down. */
+/* Height cap in kiosk — inline size from Plan.tsx overrides when fitted. */
 body.kiosk-mode .plan-canvas {
-  height: calc(100vh - 96px);
   min-height: 0;
+}
+
+body.kiosk-mode .plan-canvas:not(.plan-canvas--fitted) {
+  height: calc(100vh - 96px);
 }
 
 /* The kiosk view is display-only: no widget edit mode, no controls. */
@@ -1354,15 +1355,17 @@ body.kiosk-mode .widgets-panel .widgets-panel-header button {
   display: none;
 }
 
-body.kiosk-mode .widgets-panel {
-  max-height: calc(100vh - 24px);
-  overflow: hidden;
+body.kiosk-mode .plan-page {
+  align-items: stretch;
 }
 
-.kiosk-toolbar-right {
+body.kiosk-mode .widgets-panel {
+  max-height: calc(100vh - 24px);
+  height: calc(100vh - 24px);
+  overflow: hidden;
   display: flex;
-  align-items: center;
-  gap: 16px;
+  flex-direction: column;
+  align-self: stretch;
 }
 
 /* Page title matches the clock size so the kiosk header reads as one line. */
@@ -1437,6 +1440,47 @@ body.kiosk-mode .plan-toolbar h2 {
   align-items: flex-start;
 }
 
+.plan-page--fitted {
+  width: max-content;
+  max-width: 100%;
+}
+
+body:not(.kiosk-mode) .plan-page--fitted {
+  width: 100%;
+  max-height: calc(100vh - 40px);
+  align-items: stretch;
+  overflow: hidden;
+}
+
+body:not(.kiosk-mode) .plan-page--fitted .plan-main {
+  min-height: 0;
+  overflow: hidden;
+}
+
+body:not(.kiosk-mode) .plan-page--fitted .widgets-panel {
+  height: calc(100vh - 40px);
+  max-height: calc(100vh - 40px);
+  overflow: hidden;
+  align-self: stretch;
+  padding: 18px;
+}
+
+body:not(.kiosk-mode) .plan-page--fitted .widgets-grid {
+  flex: 1 1 0;
+  min-height: 0;
+  --row-h: calc((100% - (var(--grid-rows) - 1) * var(--widget-gap)) / var(--grid-rows));
+}
+
+body:not(.kiosk-mode) .widgets-panel.is-editing {
+  padding: 18px;
+}
+
+.plan-page--fitted .plan-main {
+  flex: 0 0 auto;
+  width: fit-content;
+  max-width: 100%;
+}
+
 .plan-main {
   flex: 1;
   min-width: 0;
@@ -1449,6 +1493,16 @@ body.kiosk-mode .plan-toolbar h2 {
   flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 16px;
+}
+
+.plan-toolbar--kiosk {
+  margin-bottom: 12px;
+  flex-wrap: nowrap;
+}
+
+.plan-toolbar--kiosk .kiosk-clock {
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .plan-add-menu {
@@ -1534,6 +1588,23 @@ body.kiosk-mode .plan-toolbar h2 {
   background-image: linear-gradient(rgba(223, 230, 233, 0.055) 1px, transparent 1px),
     linear-gradient(90deg, rgba(223, 230, 233, 0.055) 1px, transparent 1px);
   background-size: 24px 24px;
+}
+
+/* Display mode: canvas cut to plan content — same pixel size in normal & kiosk. */
+.plan-canvas--fitted {
+  height: auto;
+  min-height: 0;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.content:has(.plan-page--fitted) {
+  overflow-x: auto;
+}
+
+body:not(.kiosk-mode) .content:has(.plan-page--fitted) {
+  overflow: hidden;
+  padding-bottom: 4px;
 }
 
 /* Fit-to-canvas wrapper: sized to the layout's bounding box and scaled down
@@ -1905,18 +1976,26 @@ body.kiosk-mode .plan-toolbar h2 {
   padding-right: 0;
 }
 
-/* Shared widget grid — one row = 75px (S = 1 row, M = 2 rows, L = 2 rows tall). */
+/* Shared widget grid — fixed 4×10 cells (S=1×1, M=2×2, L=4×2). */
 .widgets-grid {
   --widget-gap: 12px;
   --grid-cols: 4;
+  --grid-rows: 10;
   --row-h: 75px;
   width: 100%;
   flex-shrink: 0;
+  position: relative;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  grid-template-rows: repeat(var(--grid-rows, 1), minmax(var(--row-h), var(--row-h)));
+  grid-template-rows: repeat(var(--grid-rows), var(--row-h));
   gap: var(--widget-gap);
   align-content: start;
+  min-height: calc(var(--grid-rows) * var(--row-h) + (var(--grid-rows) - 1) * var(--widget-gap));
+}
+
+body.kiosk-mode .widgets-grid {
+  --row-h: calc((100vh - 24px - 72px - (var(--grid-rows) - 1) * var(--widget-gap)) / var(--grid-rows));
+  min-height: calc(var(--grid-rows) * var(--row-h) + (var(--grid-rows) - 1) * var(--widget-gap));
 }
 
 .widgets-grid-cell {
@@ -1930,6 +2009,244 @@ body.kiosk-mode .plan-toolbar h2 {
 .widgets-grid-cell.is-under-widget {
   pointer-events: none;
   border-color: transparent;
+}
+
+.widgets-panel.is-editing .widgets-grid-cell.is-empty {
+  cursor: pointer;
+  border-style: dashed;
+  border-color: rgba(178, 190, 195, 0.28);
+  background: rgba(255, 255, 255, 0.02);
+  transition:
+    border-color var(--duration-fast) var(--ease),
+    background var(--duration-fast) var(--ease),
+    box-shadow var(--duration-fast) var(--ease);
+}
+
+.widgets-panel.is-editing .widgets-grid-cell.is-empty:hover {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.widgets-panel.is-editing .widgets-grid-cell.is-empty::after {
+  content: "+";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease);
+  pointer-events: none;
+}
+
+.widgets-panel.is-editing .widgets-grid-cell.is-empty {
+  position: relative;
+  z-index: 1;
+}
+
+.widgets-panel.is-editing .widgets-grid.is-editing-grid:has(.widget-cell-picker) .widgets-grid-cell.is-empty {
+  z-index: 10;
+}
+
+.widgets-panel.is-editing .widgets-grid-cell.is-empty:hover::after,
+.widgets-panel.is-editing .widgets-grid-cell.is-picker-origin::after {
+  opacity: 0.85;
+}
+
+.widgets-panel.is-editing .widgets-grid-cell.is-picker-origin {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.widgets-grid-picker-preview {
+  pointer-events: none;
+  z-index: 2;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  outline: 2px dashed color-mix(in srgb, var(--accent) 70%, transparent);
+  outline-offset: -2px;
+}
+
+.widgets-grid-picker-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  pointer-events: none;
+}
+
+.widget-cell-picker {
+  position: absolute;
+  z-index: 11;
+  pointer-events: auto;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(340px, calc(100% - 24px));
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+  padding: 18px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-glass-strong);
+  box-shadow: var(--shadow-pop);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.widget-cell-picker-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.widget-cell-picker-header h4 {
+  margin: 0;
+  flex: 1;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.widget-cell-picker-back,
+.widget-cell-picker-close {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  background: var(--bg-glass);
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease),
+    border-color var(--duration-fast) var(--ease);
+}
+
+.widget-cell-picker-back:hover,
+.widget-cell-picker-close:hover {
+  background: var(--bg-glass-strong);
+  color: var(--text-primary);
+  border-color: var(--border-glass-strong);
+}
+
+.widget-picker-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.widget-picker-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 14px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-glass);
+  background: var(--bg-glass);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color var(--duration-fast) var(--ease),
+    background var(--duration-fast) var(--ease),
+    transform var(--duration-fast) var(--ease);
+}
+
+.widget-picker-option:hover {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  background: var(--accent-soft);
+  transform: translateY(-1px);
+}
+
+.widget-picker-option.is-disabled,
+.widget-picker-option:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.widget-picker-option.is-disabled:hover,
+.widget-picker-option:disabled:hover {
+  border-color: var(--border-glass);
+  background: var(--bg-glass);
+  transform: none;
+}
+
+.widget-picker-option.is-disabled .widget-picker-option-icon,
+.widget-picker-option:disabled .widget-picker-option-icon {
+  background: rgba(178, 190, 195, 0.12);
+  color: var(--text-muted);
+}
+
+.widget-picker-option.is-disabled .widget-picker-option-label,
+.widget-picker-option:disabled .widget-picker-option-label,
+.widget-picker-option.is-disabled .widget-picker-option-hint,
+.widget-picker-option:disabled .widget-picker-option-hint {
+  color: var(--text-muted);
+}
+
+.widget-picker-option-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent-strong);
+}
+
+.widget-picker-option-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.widget-picker-option-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.widget-picker-footnote,
+.widget-picker-empty {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.widget-picker-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.widget-picker-form input,
+.widget-picker-form select {
+  padding: 10px 12px;
+  border: 1px solid var(--border-glass-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-glass-strong);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.widget-picker-submit {
+  width: 100%;
+  margin-top: 4px;
 }
 
 .widgets-grid-drop-preview {

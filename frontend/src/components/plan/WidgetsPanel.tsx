@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { apiErrorMessage, endpoints } from "../../api/client";
 import type {
   DeviceView,
@@ -11,7 +11,21 @@ import type {
   Widget,
   WidgetSize,
 } from "../../api/types";
-import { CloudIcon, CloudLightningIcon, CloudRainIcon, CloudSnowIcon, DropletIcon, GripIcon, sensorPropertyIcon, sensorPropertyVariant, SunIcon, WindIcon } from "../icons";
+import {
+  CloudIcon,
+  CloudLightningIcon,
+  CloudRainIcon,
+  CloudSnowIcon,
+  DropletIcon,
+  GaugeIcon,
+  GripIcon,
+  MusicIcon,
+  sensorPropertyIcon,
+  sensorPropertyVariant,
+  SunIcon,
+  ThermometerIcon,
+  WindIcon,
+} from "../icons";
 import SensorChartCard from "./SensorChartCard";
 import { metricNormBand, metricStatus } from "../../utils/metricStatus";
 import { useMetricThresholds } from "../../hooks/useMetricThresholds";
@@ -31,6 +45,7 @@ const SIZE_ORDER: WidgetSize[] = ["s", "m", "l"];
 const CHART_SIZE_ORDER: WidgetSize[] = ["m", "l"];
 const SIZE_LABEL: Record<WidgetSize, string> = { s: "S", m: "M", l: "L" };
 const GRID_COLS = 4;
+const GRID_ROWS = 10;
 
 function widgetSpans(size: WidgetSize): { col: number; row: number } {
   if (size === "s") return { col: 1, row: 1 };
@@ -80,7 +95,7 @@ function autoAssignPositions(widgets: Widget[]): Widget[] {
       continue;
     }
     let placed = false;
-    for (let r = 0; !placed; r++) {
+    for (let r = 0; !placed && r < GRID_ROWS; r++) {
       for (let c = 0; c <= GRID_COLS - span.col; c++) {
         if (fits(r, c, span.col, span.row)) {
           w.grid_row = r;
@@ -118,13 +133,123 @@ function canPlaceWidget(
   const w = widgets.find((x) => x.id === widgetId);
   if (!w) return false;
   const span = widgetSpans(size ?? displayWidgetSize(w));
-  if (col + span.col > GRID_COLS || row < 0 || col < 0) return false;
+  if (col + span.col > GRID_COLS || row + span.row > GRID_ROWS || row < 0 || col < 0) return false;
   const occupied = buildOccupied(widgets, widgetId);
   const key = (r: number, c: number) => `${r},${c}`;
   for (let y = 0; y < span.row; y++)
     for (let x = 0; x < span.col; x++)
       if (occupied.has(key(row + y, col + x))) return false;
   return true;
+}
+
+/** Top-left anchor where a new widget of `size` can cover the clicked cell. */
+function findPlacementAnchor(
+  widgets: Widget[],
+  hoverRow: number,
+  hoverCol: number,
+  size: WidgetSize,
+): { row: number; col: number } | null {
+  const span = widgetSpans(size);
+  const occupied = buildOccupied(widgets);
+  const key = (r: number, c: number) => `${r},${c}`;
+  const fits = (row: number, col: number) => {
+    if (col + span.col > GRID_COLS || row + span.row > GRID_ROWS || row < 0 || col < 0) return false;
+    for (let y = 0; y < span.row; y++)
+      for (let x = 0; x < span.col; x++)
+        if (occupied.has(key(row + y, col + x))) return false;
+    return true;
+  };
+
+  const candidates: { row: number; col: number }[] = [];
+  for (let dr = 0; dr < span.row; dr++) {
+    for (let dc = 0; dc < span.col; dc++) {
+      const row = hoverRow - dr;
+      const col = hoverCol - dc;
+      if (row >= 0 && col >= 0 && col + span.col <= GRID_COLS && row + span.row <= GRID_ROWS) {
+        candidates.push({ row, col });
+      }
+    }
+  }
+  candidates.sort((a, b) => a.row - b.row || a.col - b.col);
+  for (const c of candidates) {
+    if (fits(c.row, c.col)) return c;
+  }
+  return null;
+}
+
+type WidgetKind = Widget["kind"];
+
+interface PickerOption {
+  kind: WidgetKind;
+  size: WidgetSize;
+  label: string;
+  hint: string;
+  icon: typeof CloudIcon;
+  disabled: boolean;
+  disabledReason?: string;
+}
+
+function pickerOptionsForCell(
+  widgets: Widget[],
+  row: number,
+  col: number,
+  hasSensors: boolean,
+  stationsLoading: boolean,
+  hasStations: boolean,
+): PickerOption[] {
+  const canSmall = findPlacementAnchor(widgets, row, col, "s") !== null;
+  const canChartM = findPlacementAnchor(widgets, row, col, "m") !== null;
+  const canChartL = findPlacementAnchor(widgets, row, col, "l") !== null;
+  const canLarge = canChartM || canChartL;
+
+  const stationSize: WidgetSize | null = canSmall
+    ? "s"
+    : canChartM
+      ? "m"
+      : canChartL
+        ? "l"
+        : null;
+  const stationHint =
+    stationSize === "s" ? "1×1 · плеер" : stationSize === "m" ? "2×2 · плеер" : "4×2 · плеер";
+
+  return [
+    {
+      kind: "weather",
+      size: "s",
+      label: "Погода",
+      hint: "1×1 · город",
+      icon: CloudIcon,
+      disabled: !canSmall,
+      disabledReason: "Нет места",
+    },
+    {
+      kind: "room_sensor",
+      size: "s",
+      label: "Датчик",
+      hint: "1×1 · показатель",
+      icon: ThermometerIcon,
+      disabled: !hasSensors || !canSmall,
+      disabledReason: !hasSensors ? "Нет датчиков" : "Нет места",
+    },
+    {
+      kind: "sensor_chart",
+      size: canChartM ? "m" : "l",
+      label: "График",
+      hint: "2×2 · 3 ч.",
+      icon: GaugeIcon,
+      disabled: !hasSensors || !canLarge,
+      disabledReason: !hasSensors ? "Нет датчиков" : "Нет места",
+    },
+    {
+      kind: "station",
+      size: stationSize ?? "s",
+      label: "Станция",
+      hint: stationSize ? stationHint : "1×1 · плеер",
+      icon: MusicIcon,
+      disabled: stationSize === null || stationsLoading || !hasStations,
+      disabledReason: stationsLoading ? "Загрузка…" : !hasStations ? "Нет станций" : "Нет места",
+    },
+  ];
 }
 
 /** Top-left anchor for a multi-cell widget when hovering a grid cell. */
@@ -143,7 +268,9 @@ function resolveDropAnchor(
     for (let dc = 0; dc < span.col; dc++) {
       const row = hoverRow - dr;
       const col = hoverCol - dc;
-      if (row >= 0 && col >= 0 && col + span.col <= GRID_COLS) candidates.push({ row, col });
+      if (row >= 0 && col >= 0 && col + span.col <= GRID_COLS && row + span.row <= GRID_ROWS) {
+        candidates.push({ row, col });
+      }
     }
   }
   candidates.sort((a, b) => a.row - b.row || a.col - b.col);
@@ -159,7 +286,7 @@ function findFirstFreeCell(widgets: Widget[], size: WidgetSize): { row: number; 
   const span = widgetSpans(size);
   const occupied = buildOccupied(widgets);
   const key = (r: number, c: number) => `${r},${c}`;
-  for (let r = 0; r < 64; r++) {
+  for (let r = 0; r < GRID_ROWS; r++) {
     for (let c = 0; c <= GRID_COLS - span.col; c++) {
       let ok = true;
       for (let y = 0; y < span.row && ok; y++)
@@ -190,24 +317,22 @@ function computeGridLayout(widgets: Widget[], spareRow: boolean): GridLayout {
   const key = (r: number, c: number) => `${r},${c}`;
 
   const placements: GridPlacement[] = [];
-  let maxRow = 0;
+  const emptyCells: { row: number; col: number }[] = [];
 
   placed.forEach((widget, index) => {
     const { col: colSpan, row: rowSpan } = widgetSpans(displayWidgetSize(widget));
     const row = widget.grid_row ?? 0;
     const col = widget.grid_col ?? 0;
     placements.push({ widget, index, row, col, colSpan, rowSpan });
-    maxRow = Math.max(maxRow, row + rowSpan);
     for (let y = 0; y < rowSpan; y++)
       for (let x = 0; x < colSpan; x++)
         occupied.add(key(row + y, col + x));
   });
 
-  const rowCount = Math.max(maxRow + (spareRow ? 1 : 0), 2);
-  const emptyCells: { row: number; col: number }[] = [];
+  const rowCount = GRID_ROWS;
 
   if (spareRow) {
-    for (let r = 0; r < rowCount; r++)
+    for (let r = 0; r < GRID_ROWS; r++)
       for (let c = 0; c < GRID_COLS; c++)
         if (!occupied.has(key(r, c))) emptyCells.push({ row: r, col: c });
   }
@@ -481,24 +606,23 @@ function RoomSensorWidgetCard({
   );
 }
 
+interface CellPicker {
+  clickRow: number;
+  clickCol: number;
+  step: "menu" | WidgetKind;
+  size: WidgetSize;
+}
+
 export default function WidgetsPanel({ devices, readOnly = false }: Props) {
   const queryClient = useQueryClient();
   const { data: widgets = [] } = useQuery({ queryKey: ["widgets"], queryFn: endpoints.getWidgets });
 
   const [editing, setEditing] = useState(false);
-  const [adding, setAdding] = useState<"weather" | "room_sensor" | "sensor_chart" | "station" | null>(null);
+  const [cellPicker, setCellPicker] = useState<CellPicker | null>(null);
   const [cityInput, setCityInput] = useState("");
   const [selectedDeviceId, setSelectedDeviceId] = useState("");
   const [selectedInstance, setSelectedInstance] = useState("");
   const [selectedStationId, setSelectedStationId] = useState("");
-
-  // Loaded lazily — only when the user opens the "add station" form.
-  const stationsQuery = useQuery({
-    queryKey: ["stations"],
-    queryFn: endpoints.getStations,
-    enabled: adding === "station",
-    retry: 1,
-  });
 
   const saveMutation = useMutation({
     mutationFn: (next: Widget[]) => endpoints.saveWidgets(next),
@@ -508,14 +632,48 @@ export default function WidgetsPanel({ devices, readOnly = false }: Props) {
   const isEditing = editing && !readOnly;
   const layout = useMemo(() => computeGridLayout(widgets, isEditing), [widgets, isEditing]);
 
+  const stationsQuery = useQuery({
+    queryKey: ["stations"],
+    queryFn: endpoints.getStations,
+    enabled: isEditing,
+    retry: 1,
+  });
+
+  const devicesWithSensors = devices.filter((d) => d.properties.some((p) => typeof p.value === "number"));
+  const selectedDevice = devices.find((d) => d.id === selectedDeviceId);
+
+  const pickerPlacement = useMemo(() => {
+    if (!cellPicker || cellPicker.step === "menu") return null;
+    const anchor = findPlacementAnchor(widgets, cellPicker.clickRow, cellPicker.clickCol, cellPicker.size);
+    if (!anchor) return null;
+    const span = widgetSpans(cellPicker.size);
+    return { ...anchor, rowSpan: span.row, colSpan: span.col };
+  }, [cellPicker, widgets]);
+
+  const closeCellPicker = () => {
+    setCellPicker(null);
+    setCityInput("");
+    setSelectedDeviceId("");
+    setSelectedInstance("");
+    setSelectedStationId("");
+  };
+
+  useEffect(() => {
+    if (!cellPicker) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeCellPicker();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [cellPicker]);
+
   const saveWidgets = (next: Widget[]) => {
     saveMutation.mutate(persistAllPositions(next, layout));
   };
 
-  const addWeatherWidget = () => {
+  const addWeatherWidget = (row: number, col: number) => {
     if (!cityInput.trim()) return;
     const size: WidgetSize = "s";
-    const { row, col } = findFirstFreeCell(widgets, size);
     const widget: WeatherWidget = {
       id: genId(),
       kind: "weather",
@@ -525,18 +683,13 @@ export default function WidgetsPanel({ devices, readOnly = false }: Props) {
       grid_col: col,
     };
     saveWidgets([...widgets, widget]);
-    setCityInput("");
-    setAdding(null);
+    closeCellPicker();
   };
 
-  const devicesWithSensors = devices.filter((d) => d.properties.some((p) => typeof p.value === "number"));
-  const selectedDevice = devices.find((d) => d.id === selectedDeviceId);
-
-  const addRoomSensorWidget = () => {
+  const addRoomSensorWidget = (row: number, col: number) => {
     const prop = selectedDevice?.properties.find((p) => p.instance === selectedInstance);
     if (!selectedDevice || !prop) return;
     const size: WidgetSize = "s";
-    const { row, col } = findFirstFreeCell(widgets, size);
     const widget: RoomSensorWidget = {
       id: genId(),
       kind: "room_sensor",
@@ -549,16 +702,12 @@ export default function WidgetsPanel({ devices, readOnly = false }: Props) {
       grid_col: col,
     };
     saveWidgets([...widgets, widget]);
-    setSelectedDeviceId("");
-    setSelectedInstance("");
-    setAdding(null);
+    closeCellPicker();
   };
 
-  const addSensorChartWidget = () => {
+  const addSensorChartWidget = (row: number, col: number, size: WidgetSize) => {
     const prop = selectedDevice?.properties.find((p) => p.instance === selectedInstance);
     if (!selectedDevice || !prop) return;
-    const size: WidgetSize = "m";
-    const { row, col } = findFirstFreeCell(widgets, size);
     const widget: SensorChartWidget = {
       id: genId(),
       kind: "sensor_chart",
@@ -572,16 +721,12 @@ export default function WidgetsPanel({ devices, readOnly = false }: Props) {
       grid_col: col,
     };
     saveWidgets([...widgets, widget]);
-    setSelectedDeviceId("");
-    setSelectedInstance("");
-    setAdding(null);
+    closeCellPicker();
   };
 
-  const addStationWidget = () => {
+  const addStationWidget = (row: number, col: number, size: WidgetSize) => {
     const station = (stationsQuery.data ?? []).find((s) => s.id === selectedStationId);
     if (!station) return;
-    const size: WidgetSize = "m";
-    const { row, col } = findFirstFreeCell(widgets, size);
     const widget: StationWidget = {
       id: genId(),
       kind: "station",
@@ -592,8 +737,42 @@ export default function WidgetsPanel({ devices, readOnly = false }: Props) {
       grid_col: col,
     };
     saveWidgets([...widgets, widget]);
+    closeCellPicker();
+  };
+
+  const openCellPicker = (row: number, col: number) => {
+    if (dragId) return;
+    setCellPicker({ clickRow: row, clickCol: col, step: "menu", size: "s" });
+    setCityInput("");
+    setSelectedDeviceId("");
+    setSelectedInstance("");
     setSelectedStationId("");
-    setAdding(null);
+  };
+
+  const pickOption = (option: PickerOption) => {
+    if (option.disabled) return;
+    setCellPicker((prev) => {
+      if (!prev) return null;
+      let size = option.size;
+      if (option.kind === "sensor_chart") {
+        size = findPlacementAnchor(widgets, prev.clickRow, prev.clickCol, "m") ? "m" : "l";
+      } else if (option.kind === "station") {
+        size = findPlacementAnchor(widgets, prev.clickRow, prev.clickCol, "s")
+          ? "s"
+          : findPlacementAnchor(widgets, prev.clickRow, prev.clickCol, "m")
+            ? "m"
+            : "l";
+      }
+      return {
+        clickRow: prev.clickRow,
+        clickCol: prev.clickCol,
+        step: option.kind,
+        size,
+      };
+    });
+    setSelectedDeviceId("");
+    setSelectedInstance("");
+    setCityInput("");
   };
 
   const removeWidget = (id: string) => saveWidgets(widgets.filter((w) => w.id !== id));
@@ -663,7 +842,7 @@ export default function WidgetsPanel({ devices, readOnly = false }: Props) {
   const toggleEditing = () => {
     setEditing((prev) => {
       if (prev) {
-        setAdding(null);
+        closeCellPicker();
         resetDrag();
         if (!widgets.every((w) => w.grid_row !== undefined && w.grid_col !== undefined)) {
           saveWidgets(widgets);
@@ -672,6 +851,29 @@ export default function WidgetsPanel({ devices, readOnly = false }: Props) {
       return !prev;
     });
   };
+
+  const menuOptions =
+    cellPicker?.step === "menu"
+      ? pickerOptionsForCell(
+          widgets,
+          cellPicker.clickRow,
+          cellPicker.clickCol,
+          devicesWithSensors.length > 0,
+          stationsQuery.isLoading,
+          (stationsQuery.data?.length ?? 0) > 0,
+        )
+      : [];
+
+  const pickerTitle =
+    cellPicker?.step === "menu"
+      ? "Добавить виджет"
+      : cellPicker?.step === "weather"
+        ? "Погода"
+        : cellPicker?.step === "room_sensor"
+          ? "Датчик комнаты"
+          : cellPicker?.step === "sensor_chart"
+            ? "График датчика"
+            : "Яндекс Станция";
 
   return (
     <aside className={`widgets-panel${isEditing ? " is-editing" : ""}`}>
@@ -685,7 +887,7 @@ export default function WidgetsPanel({ devices, readOnly = false }: Props) {
       </div>
 
       <div
-        className="widgets-grid"
+        className={`widgets-grid${isEditing ? " is-editing-grid" : ""}`}
         ref={gridRef}
         style={{ "--grid-rows": layout.rowCount } as CSSProperties}
         onDragOver={(e) => {
@@ -718,10 +920,15 @@ export default function WidgetsPanel({ devices, readOnly = false }: Props) {
             return (
               <div
                 key={`cell-${row}-${col}`}
-                className={`widgets-grid-cell${underWidget ? " is-under-widget" : ""}`}
+                className={`widgets-grid-cell${underWidget ? " is-under-widget" : " is-empty"}${
+                  cellPicker?.clickRow === row && cellPicker.clickCol === col ? " is-picker-origin" : ""
+                }`}
                 style={gridArea(row, col, 1, 1)}
                 data-grid-row={row}
                 data-grid-col={col}
+                onClick={() => {
+                  if (!underWidget && !dragId) openCellPicker(row, col);
+                }}
                 onDragOver={(e) => {
                   if (!dragId) return;
                   e.preventDefault();
@@ -744,6 +951,205 @@ export default function WidgetsPanel({ devices, readOnly = false }: Props) {
             className={`widgets-grid-drop-preview${dropTarget.valid ? "" : " is-invalid"}`}
             style={gridArea(dropTarget.row, dropTarget.col, dropTarget.rowSpan, dropTarget.colSpan)}
           />
+        )}
+
+        {pickerPlacement && (
+          <div
+            className="widgets-grid-picker-preview"
+            style={gridArea(pickerPlacement.row, pickerPlacement.col, pickerPlacement.rowSpan, pickerPlacement.colSpan)}
+          />
+        )}
+
+        {cellPicker && (
+          <>
+            <div className="widgets-grid-picker-backdrop" aria-hidden="true" />
+            <div className="widget-cell-picker" role="dialog" aria-modal="true" aria-labelledby="widget-picker-title">
+              <div className="widget-cell-picker-header">
+                {cellPicker.step !== "menu" && (
+                  <button
+                    type="button"
+                    className="widget-cell-picker-back"
+                    onClick={() =>
+                      setCellPicker((prev) =>
+                        prev ? { clickRow: prev.clickRow, clickCol: prev.clickCol, step: "menu", size: "s" } : null,
+                      )
+                    }
+                  >
+                    ←
+                  </button>
+                )}
+                <h4 id="widget-picker-title">{pickerTitle}</h4>
+                <button type="button" className="widget-cell-picker-close" onClick={closeCellPicker} aria-label="Закрыть">
+                  ×
+                </button>
+              </div>
+
+              {cellPicker.step === "menu" && (
+                <>
+                  <div className="widget-picker-options">
+                    {menuOptions.map((option) => {
+                      const Icon = option.icon;
+                      return (
+                        <button
+                          key={option.kind}
+                          type="button"
+                          className={`widget-picker-option${option.disabled ? " is-disabled" : ""}`}
+                          disabled={option.disabled}
+                          title={option.disabled ? option.disabledReason : undefined}
+                          onClick={() => pickOption(option)}
+                        >
+                          <span className="widget-picker-option-icon">
+                            <Icon width={18} height={18} />
+                          </span>
+                          <span className="widget-picker-option-label">{option.label}</span>
+                          <span className="widget-picker-option-hint">
+                            {option.disabled ? (option.disabledReason ?? option.hint) : option.hint}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="widget-picker-footnote">Нажмите на свободную ячейку, чтобы выбрать другое место</p>
+                </>
+              )}
+
+              {cellPicker.step === "weather" && pickerPlacement && (
+                <div className="widget-picker-form">
+                  <input
+                    type="text"
+                    placeholder="Город, например Москва"
+                    value={cityInput}
+                    autoFocus
+                    onChange={(e) => setCityInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && cityInput.trim()) {
+                        addWeatherWidget(pickerPlacement.row, pickerPlacement.col);
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="primary widget-picker-submit"
+                    onClick={() => addWeatherWidget(pickerPlacement.row, pickerPlacement.col)}
+                    disabled={!cityInput.trim()}
+                  >
+                    Добавить
+                  </button>
+                </div>
+              )}
+
+              {cellPicker.step === "room_sensor" && pickerPlacement && (
+                <div className="widget-picker-form">
+                  <select
+                    value={selectedDeviceId}
+                    onChange={(e) => {
+                      setSelectedDeviceId(e.target.value);
+                      setSelectedInstance("");
+                    }}
+                  >
+                    <option value="">— устройство —</option>
+                    {devicesWithSensors.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedDevice && (
+                    <select value={selectedInstance} onChange={(e) => setSelectedInstance(e.target.value)}>
+                      <option value="">— показатель —</option>
+                      {selectedDevice.properties
+                        .filter((p) => typeof p.value === "number")
+                        .map((p) => (
+                          <option key={p.instance} value={p.instance}>
+                            {p.label}
+                          </option>
+                        ))}
+                    </select>
+                  )}
+                  <button
+                    type="button"
+                    className="primary widget-picker-submit"
+                    onClick={() => addRoomSensorWidget(pickerPlacement.row, pickerPlacement.col)}
+                    disabled={!selectedInstance}
+                  >
+                    Добавить
+                  </button>
+                </div>
+              )}
+
+              {cellPicker.step === "sensor_chart" && pickerPlacement && (
+                <div className="widget-picker-form">
+                  <select
+                    value={selectedDeviceId}
+                    onChange={(e) => {
+                      setSelectedDeviceId(e.target.value);
+                      setSelectedInstance("");
+                    }}
+                  >
+                    <option value="">— датчик —</option>
+                    {devicesWithSensors.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedDevice && (
+                    <select value={selectedInstance} onChange={(e) => setSelectedInstance(e.target.value)}>
+                      <option value="">— показатель —</option>
+                      {selectedDevice.properties
+                        .filter((p) => typeof p.value === "number")
+                        .map((p) => (
+                          <option key={p.instance} value={p.instance}>
+                            {p.label}
+                          </option>
+                        ))}
+                    </select>
+                  )}
+                  <button
+                    type="button"
+                    className="primary widget-picker-submit"
+                    onClick={() =>
+                      addSensorChartWidget(pickerPlacement.row, pickerPlacement.col, cellPicker.size)
+                    }
+                    disabled={!selectedInstance}
+                  >
+                    Добавить · {SIZE_LABEL[cellPicker.size]}
+                  </button>
+                </div>
+              )}
+
+              {cellPicker.step === "station" && pickerPlacement && (
+                <div className="widget-picker-form">
+                  {stationsQuery.isLoading && <span className="loading">Ищем станции…</span>}
+                  {stationsQuery.isError && (
+                    <span className="widget-error">{apiErrorMessage(stationsQuery.error)}</span>
+                  )}
+                  {stationsQuery.data && stationsQuery.data.length === 0 && (
+                    <span className="widget-meta">В аккаунте нет станций</span>
+                  )}
+                  {stationsQuery.data && stationsQuery.data.length > 0 && (
+                    <select value={selectedStationId} onChange={(e) => setSelectedStationId(e.target.value)}>
+                      <option value="">— станция —</option>
+                      {stationsQuery.data.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                          {!s.online ? " (не в сети)" : ""}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <button
+                    type="button"
+                    className="primary widget-picker-submit"
+                    onClick={() => addStationWidget(pickerPlacement.row, pickerPlacement.col, cellPicker.size)}
+                    disabled={!selectedStationId}
+                  >
+                    Добавить · {SIZE_LABEL[cellPicker.size]}
+                  </button>
+                </div>
+              )}
+            </div>
+          </>
         )}
 
       {layout.placements.map(({ widget: w, row, col, colSpan, rowSpan }) => {
@@ -821,161 +1227,6 @@ export default function WidgetsPanel({ devices, readOnly = false }: Props) {
         );
       })}
       </div>
-
-      {isEditing && adding === null && (
-        <div className="widget-add-actions">
-          <button type="button" className="secondary" onClick={() => setAdding("weather")}>
-            + Погода
-          </button>
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => setAdding("room_sensor")}
-            disabled={devicesWithSensors.length === 0}
-          >
-            + Датчик комнаты
-          </button>
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => setAdding("sensor_chart")}
-            disabled={devicesWithSensors.length === 0}
-          >
-            + График датчика
-          </button>
-          <button type="button" className="secondary" onClick={() => setAdding("station")}>
-            + Яндекс Станция
-          </button>
-        </div>
-      )}
-
-      {isEditing && adding === "station" && (
-        <div className="widget-add-form">
-          {stationsQuery.isLoading && <span className="loading">Ищем станции…</span>}
-          {stationsQuery.isError && (
-            <span className="widget-error">{apiErrorMessage(stationsQuery.error)}</span>
-          )}
-          {stationsQuery.data && stationsQuery.data.length === 0 && (
-            <span className="widget-meta">В аккаунте нет станций</span>
-          )}
-          {stationsQuery.data && stationsQuery.data.length > 0 && (
-            <select value={selectedStationId} onChange={(e) => setSelectedStationId(e.target.value)}>
-              <option value="">— станция —</option>
-              {stationsQuery.data.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                  {!s.online ? " (не в сети)" : ""}
-                </option>
-              ))}
-            </select>
-          )}
-          <div style={{ display: "flex", gap: 8 }}>
-            <button type="button" className="primary" onClick={addStationWidget} disabled={!selectedStationId}>
-              Добавить
-            </button>
-            <button type="button" className="secondary" onClick={() => setAdding(null)}>
-              Отмена
-            </button>
-          </div>
-        </div>
-      )}
-
-      {isEditing && adding === "weather" && (
-        <div className="widget-add-form">
-          <input
-            type="text"
-            placeholder="Город, например Москва"
-            value={cityInput}
-            onChange={(e) => setCityInput(e.target.value)}
-          />
-          <div style={{ display: "flex", gap: 8 }}>
-            <button type="button" className="primary" onClick={addWeatherWidget}>
-              Добавить
-            </button>
-            <button type="button" className="secondary" onClick={() => setAdding(null)}>
-              Отмена
-            </button>
-          </div>
-        </div>
-      )}
-
-      {isEditing && adding === "sensor_chart" && (
-        <div className="widget-add-form">
-          <select
-            value={selectedDeviceId}
-            onChange={(e) => {
-              setSelectedDeviceId(e.target.value);
-              setSelectedInstance("");
-            }}
-          >
-            <option value="">— датчик —</option>
-            {devicesWithSensors.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
-          {selectedDevice && (
-            <select value={selectedInstance} onChange={(e) => setSelectedInstance(e.target.value)}>
-              <option value="">— показатель —</option>
-              {selectedDevice.properties
-                .filter((p) => typeof p.value === "number")
-                .map((p) => (
-                  <option key={p.instance} value={p.instance}>
-                    {p.label}
-                  </option>
-                ))}
-            </select>
-          )}
-          <div style={{ display: "flex", gap: 8 }}>
-            <button type="button" className="primary" onClick={addSensorChartWidget} disabled={!selectedInstance}>
-              Добавить
-            </button>
-            <button type="button" className="secondary" onClick={() => setAdding(null)}>
-              Отмена
-            </button>
-          </div>
-        </div>
-      )}
-
-      {isEditing && adding === "room_sensor" && (
-        <div className="widget-add-form">
-          <select
-            value={selectedDeviceId}
-            onChange={(e) => {
-              setSelectedDeviceId(e.target.value);
-              setSelectedInstance("");
-            }}
-          >
-            <option value="">— устройство —</option>
-            {devicesWithSensors.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
-          {selectedDevice && (
-            <select value={selectedInstance} onChange={(e) => setSelectedInstance(e.target.value)}>
-              <option value="">— показатель —</option>
-              {selectedDevice.properties
-                .filter((p) => typeof p.value === "number")
-                .map((p) => (
-                  <option key={p.instance} value={p.instance}>
-                    {p.label}
-                  </option>
-                ))}
-            </select>
-          )}
-          <div style={{ display: "flex", gap: 8 }}>
-            <button type="button" className="primary" onClick={addRoomSensorWidget} disabled={!selectedInstance}>
-              Добавить
-            </button>
-            <button type="button" className="secondary" onClick={() => setAdding(null)}>
-              Отмена
-            </button>
-          </div>
-        </div>
-      )}
     </aside>
   );
 }

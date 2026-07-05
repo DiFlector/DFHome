@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { apiErrorMessage, endpoints } from "../api/client";
 import type { DeviceView, PlanDevicePosition, PlanLayout, PlanRoom } from "../api/types";
 import DevicePopover, { type PopoverAnchor } from "../components/DevicePopover";
-import { CompressIcon, ExpandIcon, GaugeIcon, MoonIcon, PlusIcon } from "../components/icons";
+import { ExpandIcon, GaugeIcon, MoonIcon, PlusIcon } from "../components/icons";
 import DeviceMarker from "../components/plan/DeviceMarker";
 import DeviceOutline from "../components/plan/DeviceOutline";
 import RoomBox, { roomComfort } from "../components/plan/RoomBox";
@@ -238,12 +238,38 @@ export default function Plan() {
   const openDevice = openPopover ? deviceById.get(openPopover.deviceId) : undefined;
 
   // -- Fit-to-canvas scaling ------------------------------------------------
-  // Whatever the window size, the whole plan should be visible without
-  // scrolling: measure the canvas, compute the layout's bounding box and
-  // scale to fit. While editing the scale locks to 1:1 (drag deltas are
-  // in screen pixels) and the canvas falls back to scrolling.
+  // Viewport budgets: kiosk hides sidebar; normal mode reserves sidebar + gutters.
+  const PLAN_CHROME_H = kiosk ? 96 : 100;
+  const PLAN_CHROME_W = kiosk ? 688 : 952; // sidebar 232 + app/content gaps + widgets 640
+  const [viewport, setViewport] = useState(() => ({
+    w: window.innerWidth,
+    h: window.innerHeight,
+  }));
+  useEffect(() => {
+    const onResize = () => setViewport({ w: window.innerWidth, h: window.innerHeight });
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const [canvasSize, setCanvasSize] = useState({ w: 0, h: 0 });
+
+  // FIT_PAD matches EDGE_PAD: content is clamped 16px inside the canvas, so
+  // a layout that fits renders at exactly scale 1 — identical to editing.
+  const FIT_PAD = 16;
+  const hasContent = layout.rooms.length > 0 || layout.devices.length > 0;
+  const contentW =
+    Math.max(0, ...layout.rooms.map((r) => r.x + r.width), ...layout.devices.map((d) => d.x + 40)) + FIT_PAD;
+  const contentH =
+    Math.max(0, ...layout.rooms.map((r) => r.y + r.height), ...layout.devices.map((d) => d.y + 48)) + FIT_PAD;
+
+  const planBudgetW = Math.max(0, viewport.w - PLAN_CHROME_W);
+  const planBudgetH = Math.max(0, viewport.h - PLAN_CHROME_H);
+  const fitScale =
+    editing || !hasContent ? 1 : Math.min(1, planBudgetW / contentW, planBudgetH / contentH);
+  const fitted = !editing && hasContent;
+  const fittedW = Math.round(contentW * fitScale);
+  const fittedH = Math.round(contentH * fitScale);
 
   useEffect(() => {
     const el = canvasRef.current;
@@ -253,62 +279,14 @@ export default function Plan() {
     });
     observer.observe(el);
     return () => observer.disconnect();
-  }, [isLoading]);
-
-  // FIT_PAD matches EDGE_PAD: content is clamped 16px inside the canvas, so
-  // a layout that fits renders at exactly scale 1 — identical to editing.
-  // (A larger pad used to force ~0.95 shrink even when everything fit.)
-  const FIT_PAD = 16;
-  const hasContent = layout.rooms.length > 0 || layout.devices.length > 0;
-  const contentW =
-    Math.max(0, ...layout.rooms.map((r) => r.x + r.width), ...layout.devices.map((d) => d.x + 40)) + FIT_PAD;
-  const contentH =
-    Math.max(0, ...layout.rooms.map((r) => r.y + r.height), ...layout.devices.map((d) => d.y + 48)) + FIT_PAD;
-  // Shrink-only fit, anchored top-left: the plan renders 1:1 exactly like
-  // the edit mode whenever it fits, and only scales down on screens smaller
-  // than the layout. No upscaling and no centering — enlarging or shifting
-  // the plan made the kiosk view look different from the editing view.
-  // In kiosk mode both budgets come from the viewport (not the canvas, whose
-  // size we set inline below), and the canvas is then cut to the content so
-  // no empty band is left under or to the right of the plan.
-  const KIOSK_CHROME_H = 96; // toolbar + paddings, mirrors the kiosk CSS calc
-  const KIOSK_CHROME_W = 688; // widgets panel (640) + paddings and gaps
-  const kioskMaxH = Math.max(0, window.innerHeight - KIOSK_CHROME_H);
-  const kioskMaxW = Math.max(0, window.innerWidth - KIOSK_CHROME_W);
-  const fitScale =
-    editing || !hasContent || canvasSize.w === 0
-      ? 1
-      : kiosk
-        ? Math.min(1, kioskMaxW / contentW, kioskMaxH / contentH)
-        : Math.min(1, canvasSize.w / contentW, canvasSize.h / contentH);
+  }, [isLoading, editing, fitted]);
 
   return (
-    <div className="plan-page">
+    <div className={`plan-page${fitted ? " plan-page--fitted" : ""}`}>
       <div className="plan-main">
-        <div className="plan-toolbar">
+        <div className={`plan-toolbar${kiosk ? " plan-toolbar--kiosk" : ""}`}>
           <h2 style={{ margin: 0 }}>Дашборд</h2>
-          {kiosk && (
-            <div className="kiosk-toolbar-right">
-              <KioskClock />
-              <button
-                type="button"
-                className={`kiosk-exit-btn${autoNight ? " is-active" : ""}`}
-                onClick={() => setAutoNight(!autoNight)}
-                title={`Авто ночной режим (${NIGHT_START_HOUR}:00–0${NIGHT_END_HOUR}:00)`}
-                aria-label="Авто ночной режим"
-              >
-                <MoonIcon width={16} height={16} />
-              </button>
-              <button
-                type="button"
-                className="kiosk-exit-btn"
-                onClick={exitKiosk}
-                aria-label="Выйти из полноэкранного режима"
-              >
-                <CompressIcon width={16} height={16} />
-              </button>
-            </div>
-          )}
+          {kiosk && <KioskClock />}
           {!kiosk && (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {editing && (
@@ -414,13 +392,9 @@ export default function Plan() {
           <p className="loading">Загрузка плана…</p>
         ) : (
           <div
-            className="plan-canvas"
+            className={`plan-canvas${fitted ? " plan-canvas--fitted" : ""}`}
             ref={canvasRef}
-            style={
-              kiosk && hasContent
-                ? { height: Math.round(contentH * fitScale), width: Math.round(contentW * fitScale) }
-                : undefined
-            }
+            style={fitted ? { width: fittedW, height: fittedH } : undefined}
           >
             <div className="plan-scale" style={{ transform: `scale(${fitScale})` }}>
               {layout.rooms.map((room) => (
