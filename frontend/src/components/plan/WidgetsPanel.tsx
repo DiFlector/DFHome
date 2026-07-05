@@ -427,28 +427,35 @@ function RoomSensorWidgetCard({
   return (
     <div className="widget-card">
       <div className="widget-card-header">
-        <span>{widget.device_name}</span>
+        <span>{size === "m" || size === "l" ? widget.label : widget.device_name}</span>
         <button type="button" className="remove-btn" onClick={onRemove} aria-label="Удалить виджет">
           ×
         </button>
       </div>
       {size === "m" || size === "l" ? (
         <div className={`widget-body sensor-m sensor-m--${sensorVariant}`}>
-          <div className="sensor-m-hero">
-            <div className="sensor-m-icon" aria-hidden>
-              {sensorPropertyIcon(widget.property_instance, { width: 20, height: 20 })}
-            </div>
+          <div className="sensor-m-top">
             <div className="sensor-m-value">
               <span className="widget-value">{prop ? String(prop.value) : "—"}</span>
               {prop?.unit && <span className="sensor-m-unit">{prop.unit}</span>}
             </div>
+            <div className="sensor-m-icon" aria-hidden>
+              {sensorPropertyIcon(widget.property_instance)}
+            </div>
           </div>
-          <div className="sensor-m-label">{widget.label}</div>
+          <div className="sensor-m-bottom">
+            <div className="sensor-m-label">{widget.device_name}</div>
+          </div>
         </div>
       ) : (
-        <div className="widget-body">
-          <div className="widget-value">{prop ? `${prop.value}${prop.unit ?? ""}` : "—"}</div>
-          <div className="widget-meta">{widget.label}</div>
+        <div className={`widget-body sensor-s sensor-s--${sensorVariant}`}>
+          <div className="sensor-s-icon" aria-hidden>
+            {sensorPropertyIcon(widget.property_instance, { width: 16, height: 16 })}
+          </div>
+          <div className="sensor-s-value">
+            <span className="widget-value">{prop ? String(prop.value) : "—"}</span>
+            {prop?.unit && <span className="sensor-s-unit">{prop.unit}</span>}
+          </div>
         </div>
       )}
     </div>

@@ -1723,6 +1723,62 @@ body.kiosk-mode .plan-toolbar h2 {
   display: none;
 }
 
+/* S — room sensor: icon + value */
+.widget-slot.size-s .widget-body.sensor-s {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding-top: 1px;
+}
+
+.sensor-s-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.sensor-s--temp .sensor-s-icon {
+  background: rgba(225, 112, 85, 0.16);
+  color: var(--c-orangeville);
+}
+
+.sensor-s--humidity .sensor-s-icon {
+  background: rgba(116, 185, 255, 0.16);
+  color: var(--accent-strong);
+}
+
+.sensor-s--battery .sensor-s-icon {
+  background: rgba(0, 184, 148, 0.16);
+  color: var(--success);
+}
+
+.sensor-s--default .sensor-s-icon {
+  background: rgba(178, 190, 195, 0.14);
+  color: var(--text-secondary);
+}
+
+.sensor-s-value {
+  display: flex;
+  align-items: baseline;
+  gap: 1px;
+  min-width: 0;
+}
+
+.widget-slot.size-s .sensor-s .widget-value {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.sensor-s-unit {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
 .widget-slot.size-s > .widget-card:not(.station-card):not(.sensor-chart-card) > .loading,
 .widget-slot.size-s > .widget-card:not(.station-card):not(.sensor-chart-card) > .widget-error {
   flex: 1;
@@ -1919,35 +1975,57 @@ body.kiosk-mode .plan-toolbar h2 {
   padding: 7px 12px;
 }
 
-/* -- Room sensor M/L -- */
+/* -- Room sensor M/L (layout mirrors weather-m) -- */
 .widget-slot.size-m .sensor-m,
 .widget-slot.size-l .sensor-m {
   flex: 1 1 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  justify-content: space-between;
-  gap: 6px;
+  gap: 0;
 }
 
-.sensor-m-hero {
-  display: grid;
-  grid-template-columns: 38px 1fr 38px;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
+.sensor-m-top {
+  flex: 1 1 0;
   min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 2px 8px;
+}
+
+.sensor-m-value {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  min-width: 0;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.sensor-m-value .widget-value {
+  line-height: 1;
+  margin-top: 0;
+}
+
+.sensor-m-unit {
+  font-weight: 600;
+  color: var(--text-muted);
 }
 
 .sensor-m-icon {
-  grid-column: 1;
-  width: 38px;
-  height: 38px;
+  width: 48px;
+  height: 48px;
   border-radius: 10px;
   display: grid;
   place-items: center;
   flex-shrink: 0;
+}
+
+.sensor-m-icon svg {
+  width: 26px;
+  height: 26px;
 }
 
 .sensor-m--temp .sensor-m-icon {
@@ -1970,50 +2048,59 @@ body.kiosk-mode .plan-toolbar h2 {
   color: var(--text-secondary);
 }
 
-.sensor-m-value {
-  grid-column: 2;
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 2px;
-}
-
-.sensor-m-value .widget-value {
-  font-size: 30px;
-  line-height: 1;
-  margin-top: 0;
-}
-
-.sensor-m-unit {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-muted);
+.sensor-m-bottom {
+  flex-shrink: 0;
+  padding-top: 7px;
+  border-top: 1px solid rgba(178, 190, 195, 0.18);
 }
 
 .sensor-m-label {
-  text-align: center;
-  font-size: 9px;
-  letter-spacing: 0.06em;
+  font-size: 11px;
+  line-height: 1.35;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--text-muted);
-  padding: 4px 8px;
-  border-radius: 6px;
-  background: rgba(178, 190, 195, 0.1);
-  align-self: stretch;
-  width: 100%;
-  box-sizing: border-box;
+  color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(178, 190, 195, 0.1);
+}
+
+.widget-slot.size-m .sensor-m-value .widget-value {
+  font-size: 42px;
+}
+
+.widget-slot.size-m .sensor-m-unit {
+  font-size: 18px;
+}
+
+.widget-slot.size-l .sensor-m-top {
+  padding: 6px 4px 10px;
 }
 
 .widget-slot.size-l .sensor-m-value .widget-value {
-  font-size: 36px;
+  font-size: 46px;
+}
+
+.widget-slot.size-l .sensor-m-unit {
+  font-size: 20px;
 }
 
 .widget-slot.size-l .sensor-m-icon {
-  width: 44px;
-  height: 44px;
+  width: 52px;
+  height: 52px;
+}
+
+.widget-slot.size-l .sensor-m-icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.widget-slot.size-l .sensor-m-label {
+  font-size: 12px;
+  padding: 7px 12px;
 }
 
 .widget-slot.size-m .sensor-m .widget-meta,

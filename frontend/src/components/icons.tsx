@@ -81,7 +81,7 @@ export function PlugIcon(props: IconProps) {
 export function ThermometerIcon(props: IconProps) {
   return (
     <svg {...base(props)}>
-      <path d="M12 14.5V5a2 2 0 1 0-4 0v9.5a4 4 0 1 0 4 0Z" />
+      <path d="M14 15.5V6a2 2 0 1 0-4 0v9.5a4 4 0 1 0 4 0Z" />
     </svg>
   );
 }
