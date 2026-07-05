@@ -1612,18 +1612,16 @@ body.kiosk-mode .plan-toolbar h2 {
   padding-right: 0;
 }
 
-/* Shared widget grid — change --row-scale / --widget-gap to resize everything. */
+/* Shared widget grid — one row = 75px (S = 1 row, M = 2 rows, L = 2 rows tall). */
 .widgets-grid {
   --widget-gap: 12px;
   --grid-cols: 4;
-  --row-scale: 1.35;
-  --col-w: calc((100% - (var(--grid-cols) - 1) * var(--widget-gap)) / var(--grid-cols));
-  --row-h: calc(var(--col-w) * var(--row-scale));
+  --row-h: 75px;
   width: 100%;
   flex-shrink: 0;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  grid-template-rows: repeat(var(--grid-rows, 1), minmax(0, var(--row-h)));
+  grid-template-rows: repeat(var(--grid-rows, 1), minmax(var(--row-h), var(--row-h)));
   gap: var(--widget-gap);
   align-content: start;
 }
@@ -1679,33 +1677,347 @@ body.kiosk-mode .plan-toolbar h2 {
   box-sizing: border-box;
 }
 
+.widget-body {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .widget-slot.size-s > .widget-card {
-  padding: 8px 9px;
+  padding: 6px 8px;
 }
 
 .widget-slot.size-s .widget-card-header {
   font-size: 9px;
-  margin-bottom: 2px;
+  margin-bottom: 0;
   letter-spacing: 0.03em;
   padding-right: 48px;
   line-height: 1.15;
+  flex-shrink: 0;
 }
 
 .widget-slot.size-s .widget-card-header span {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  display: block;
   overflow: hidden;
-  white-space: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.widget-slot.size-s .widget-body {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
 }
 
 .widget-slot.size-s .widget-value {
-  font-size: 15px;
-  line-height: 1.15;
-  margin-top: auto;
+  font-size: 17px;
+  line-height: 1.1;
+  margin-top: 0;
 }
 
 .widget-slot.size-s .widget-meta {
+  display: none;
+}
+
+.widget-slot.size-s > .widget-card:not(.station-card):not(.sensor-chart-card) > .loading,
+.widget-slot.size-s > .widget-card:not(.station-card):not(.sensor-chart-card) > .widget-error {
+  flex: 1;
+  display: grid;
+  place-items: center;
+}
+
+.widget-slot > .widget-card:not(.station-card):not(.sensor-chart-card) > .loading,
+.widget-slot > .widget-card:not(.station-card):not(.sensor-chart-card) > .widget-error {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+}
+
+/* M/L — weather card: equal vertical padding (city ↔ top, forecast ↔ bottom) */
+.widget-slot.size-m > .widget-card.weather-card,
+.widget-slot.size-l > .widget-card.weather-card {
+  padding: 10px 10px;
+  height: 100%;
+}
+
+.widget-slot.size-m > .widget-card.weather-card .widget-card-header,
+.widget-slot.size-l > .widget-card.weather-card .widget-card-header {
+  font-size: 10px;
+  margin-bottom: 0;
+  letter-spacing: 0.03em;
+  padding-right: 48px;
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+
+.widget-slot.size-m > .widget-card.weather-card .widget-card-header span,
+.widget-slot.size-l > .widget-card.weather-card .widget-card-header span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* M/L — rich layouts for room sensor (weather uses .weather-card above) */
+.widget-slot.size-m > .widget-card:not(.station-card):not(.sensor-chart-card):not(.weather-card),
+.widget-slot.size-l > .widget-card:not(.station-card):not(.sensor-chart-card):not(.weather-card) {
+  padding: 8px 10px;
+  height: 100%;
+}
+
+.widget-slot.size-m > .widget-card:not(.station-card):not(.sensor-chart-card):not(.weather-card) .widget-card-header,
+.widget-slot.size-l > .widget-card:not(.station-card):not(.sensor-chart-card):not(.weather-card) .widget-card-header {
+  font-size: 10px;
+  margin-bottom: 0;
+  letter-spacing: 0.03em;
+  padding-right: 48px;
+  flex-shrink: 0;
+}
+
+.widget-slot.size-m > .widget-card:not(.station-card):not(.sensor-chart-card):not(.weather-card) .widget-card-header span,
+.widget-slot.size-l > .widget-card:not(.station-card):not(.sensor-chart-card):not(.weather-card) .widget-card-header span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.widget-slot.size-m > .widget-card:not(.station-card):not(.sensor-chart-card):not(.weather-card) .loading,
+.widget-slot.size-m > .widget-card:not(.station-card):not(.sensor-chart-card):not(.weather-card) .widget-error,
+.widget-slot.size-l > .widget-card:not(.station-card):not(.sensor-chart-card):not(.weather-card) .loading,
+.widget-slot.size-l > .widget-card:not(.station-card):not(.sensor-chart-card):not(.weather-card) .widget-error {
+  flex: 1;
+  display: grid;
+  place-items: center;
+}
+
+/* -- Weather M/L -- */
+.widget-slot.size-m .weather-m,
+.widget-slot.size-l .weather-m {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.weather-m-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 6px 2px 10px;
+}
+
+.weather-m-temp {
+  display: flex;
+  align-items: center;
+  font-size: 36px;
+  font-weight: 700;
+  font-family: "Outfit", sans-serif;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.weather-m-degree {
+  font-size: 0.6em;
+  font-weight: 600;
+  opacity: 0.8;
+  vertical-align: super;
+}
+
+.weather-m-icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(116, 185, 255, 0.14);
+  color: var(--accent-strong);
+  flex-shrink: 0;
+}
+
+.weather-m-icon svg {
+  width: 30px;
+  height: 30px;
+}
+
+.weather-m-bottom {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 7px 0 0;
+  border-top: 1px solid rgba(178, 190, 195, 0.18);
+}
+
+.weather-m-stats {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.weather-m-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.weather-m-stat svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.weather-m-forecast {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(178, 190, 195, 0.1);
+  flex-shrink: 0;
+}
+
+.widget-slot.size-l .weather-m-temp {
+  font-size: 42px;
+}
+
+.widget-slot.size-l .weather-m-icon svg {
+  width: 34px;
+  height: 34px;
+}
+
+.widget-slot.size-l .weather-m-stat,
+.widget-slot.size-l .weather-m-forecast {
+  font-size: 13px;
+}
+
+.widget-slot.size-l .weather-m-stat svg {
+  width: 15px;
+  height: 15px;
+}
+
+.widget-slot.size-l .weather-m-forecast {
+  padding: 7px 12px;
+}
+
+/* -- Room sensor M/L -- */
+.widget-slot.size-m .sensor-m,
+.widget-slot.size-l .sensor-m {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.sensor-m-hero {
+  display: grid;
+  grid-template-columns: 38px 1fr 38px;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+}
+
+.sensor-m-icon {
+  grid-column: 1;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.sensor-m--temp .sensor-m-icon {
+  background: rgba(225, 112, 85, 0.16);
+  color: var(--c-orangeville);
+}
+
+.sensor-m--humidity .sensor-m-icon {
+  background: rgba(116, 185, 255, 0.16);
+  color: var(--accent-strong);
+}
+
+.sensor-m--battery .sensor-m-icon {
+  background: rgba(0, 184, 148, 0.16);
+  color: var(--success);
+}
+
+.sensor-m--default .sensor-m-icon {
+  background: rgba(178, 190, 195, 0.14);
+  color: var(--text-secondary);
+}
+
+.sensor-m-value {
+  grid-column: 2;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px;
+}
+
+.sensor-m-value .widget-value {
+  font-size: 30px;
+  line-height: 1;
+  margin-top: 0;
+}
+
+.sensor-m-unit {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.sensor-m-label {
+  text-align: center;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(178, 190, 195, 0.1);
+  align-self: stretch;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.widget-slot.size-l .sensor-m-value .widget-value {
+  font-size: 36px;
+}
+
+.widget-slot.size-l .sensor-m-icon {
+  width: 44px;
+  height: 44px;
+}
+
+.widget-slot.size-m .sensor-m .widget-meta,
+.widget-slot.size-l .sensor-m .widget-meta {
   display: none;
 }
 
@@ -1981,16 +2293,57 @@ body.kiosk-mode .plan-toolbar h2 {
   height: 15px;
 }
 
-/* S — обложка + название, без управления */
+/* S — заголовок как у датчиков, ниже обложка + трек */
+/* S — header top, track centered vertically */
+.widget-slot.size-s > .widget-card.station-card {
+  height: 100%;
+  padding: 6px 8px;
+  justify-content: flex-start;
+}
+
 .widget-slot.size-s .station-playback,
 .widget-slot.size-s .station-controls {
   display: none;
+}
+
+.widget-slot.size-s .station-card .widget-card-header {
+  flex-shrink: 0;
+  margin-bottom: 0;
+  padding-right: 48px;
+  font-size: 9px;
+  letter-spacing: 0.03em;
+  line-height: 1.15;
+}
+
+.widget-slot.size-s .station-card .widget-card-header span {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+}
+
+.widget-slot.size-s .station-body {
+  flex: 1 1 0;
+  min-height: 0;
+  margin-top: 0;
+  padding-top: 0;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.widget-slot.size-s .station-body-compact {
+  flex: 1 1 0;
+  margin-top: 0;
+  padding-top: 0;
+  justify-content: center;
 }
 
 .widget-slot.size-s .station-cover {
   width: 24px;
   height: 24px;
   border-radius: 5px;
+  flex-shrink: 0;
 }
 
 .widget-slot.size-s .station-cover-empty svg {
@@ -1998,50 +2351,77 @@ body.kiosk-mode .plan-toolbar h2 {
   height: 12px;
 }
 
-.widget-slot.size-s .station-card .widget-card-header {
-  flex-shrink: 0;
-  margin-bottom: 0;
-  padding-right: 48px;
-}
-
-.widget-slot.size-s .station-card .widget-card-header span {
-  display: none;
-}
-
-.widget-slot.size-s .station-body {
-  flex: 1 1 0;
-  min-height: 0;
-  justify-content: center;
-  overflow: hidden;
-}
-
 .widget-slot.size-s .station-track {
-  gap: 6px;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 0 6px;
   align-items: center;
+  min-width: 0;
+}
+
+.widget-slot.size-s .station-cover {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: center;
+}
+
+.widget-slot.size-s .station-track-meta {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  min-width: 0;
 }
 
 .widget-slot.size-s .station-title {
   font-size: 10px;
-  white-space: normal;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  font-weight: 600;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.widget-slot.size-s .station-idle {
+  font-size: 9px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   line-height: 1.2;
 }
 
 .widget-slot.size-s .station-artist {
-  display: none;
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-top: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.widget-slot.size-s .station-loading {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
 }
 
 .widget-slot.size-m > .widget-card.station-card {
   padding: 8px 10px;
+  height: 100%;
+  justify-content: flex-start;
 }
 
 .widget-slot.size-m .station-card .widget-card-header {
   font-size: 10px;
-  margin-bottom: 2px;
+  margin-bottom: 0;
   letter-spacing: 0.03em;
   padding-right: 48px;
+  flex-shrink: 0;
 }
 
 .widget-slot.size-m .station-card .widget-card-header span {
@@ -2051,50 +2431,82 @@ body.kiosk-mode .plan-toolbar h2 {
   white-space: nowrap;
 }
 
-/* M — обложка + мета, прогресс, управление снизу по центру */
-.widget-slot.size-m .station-body {
-  display: grid;
-  grid-template-columns: 32px minmax(0, 1fr);
-  grid-template-rows: auto auto auto;
-  gap: 4px 8px;
+.widget-slot.size-m .station-body-m {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.station-m-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
   align-items: center;
+  gap: 10px;
 }
 
-.widget-slot.size-m .station-track {
-  display: contents;
+.station-m-main-idle {
+  justify-content: center;
 }
 
-.widget-slot.size-m .station-cover {
-  grid-column: 1;
-  grid-row: 1;
-  align-self: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
+.station-m-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
 }
 
-.widget-slot.size-m .station-cover-empty svg {
-  width: 13px;
-  height: 13px;
+.widget-slot.size-m .station-body-m .station-cover {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  box-shadow: none;
 }
 
-.widget-slot.size-m .station-track-meta {
-  grid-column: 2;
-  grid-row: 1;
-  align-self: center;
+.widget-slot.size-m .station-body-m .station-cover-empty svg {
+  width: 18px;
+  height: 18px;
 }
 
-.widget-slot.size-m .station-title {
-  font-size: 11px;
+.widget-slot.size-m .station-body-m .station-title {
+  font-size: 12px;
+  line-height: 1.25;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
-.widget-slot.size-m .station-artist {
-  font-size: 9.5px;
+.widget-slot.size-m .station-body-m .station-artist {
+  font-size: 10px;
+  margin-top: 0;
 }
 
-.widget-slot.size-m .station-playback {
-  grid-column: 1 / -1;
-  grid-row: 2;
+.widget-slot.size-m .station-body-m .station-idle {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.widget-slot.size-m .station-body-m .station-playback {
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.widget-slot.size-m .station-body-m.is-playing .station-progress-fill {
+  background: linear-gradient(90deg, var(--accent), var(--accent-strong));
+}
+
+.widget-slot.size-m .station-loading,
+.widget-slot.size-l .station-loading {
+  flex: 1;
+  display: grid;
+  place-items: center;
 }
 
 .widget-slot.size-m .station-progress {
@@ -2102,41 +2514,27 @@ body.kiosk-mode .plan-toolbar h2 {
 }
 
 .widget-slot.size-m .station-times {
-  margin-top: 1px;
+  margin-top: 2px;
   font-size: 8.5px;
 }
 
 .widget-slot.size-m .station-controls {
-  grid-column: 1 / -1;
-  grid-row: 3;
-  justify-content: center;
-  gap: 6px;
-  margin-top: 0;
+  display: none;
 }
 
-.widget-slot.size-m .station-ctrl {
-  width: 24px;
-  height: 24px;
-}
-
-.widget-slot.size-m .station-ctrl svg {
-  width: 11px;
-  height: 11px;
-}
-
-.widget-slot.size-m .station-ctrl-main svg {
-  width: 12px;
-  height: 12px;
-}
-
-/* L — широкий: обложка + мета, прогресс на всю ширину, управление снизу */
+/* L — header top, track centered, timeline bottom */
 .widget-slot.size-l > .widget-card.station-card {
-  padding: 10px 12px;
+  padding: 8px 10px;
+  height: 100%;
+  justify-content: flex-start;
 }
 
 .widget-slot.size-l .station-card .widget-card-header {
   padding-right: 48px;
-  margin-bottom: 6px;
+  margin-bottom: 0;
+  flex-shrink: 0;
+  font-size: 10px;
+  letter-spacing: 0.03em;
 }
 
 .widget-slot.size-l .station-card .widget-card-header span {
@@ -2147,16 +2545,19 @@ body.kiosk-mode .plan-toolbar h2 {
 }
 
 .widget-slot.size-l .station-body {
-  flex: 1;
+  flex: 1 1 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 6px;
 }
 
 .widget-slot.size-l .station-track {
-  flex-shrink: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-height: 0;
 }
 
 .widget-slot.size-l .station-playback {
@@ -2165,24 +2566,21 @@ body.kiosk-mode .plan-toolbar h2 {
 }
 
 .widget-slot.size-l .station-controls {
-  flex-shrink: 0;
-  margin-top: 0;
-  justify-content: center;
-  gap: 10px;
+  display: none;
 }
 
 .widget-slot.size-l .station-cover {
-  width: 52px;
-  height: 52px;
-  border-radius: 10px;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
 }
 
 .widget-slot.size-l .station-title {
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .widget-slot.size-l .station-artist {
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .widget-slot.size-l .station-ctrl {

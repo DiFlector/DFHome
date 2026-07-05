@@ -237,6 +237,72 @@ export function GripIcon(props: IconProps) {
   );
 }
 
+export function BatteryIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="3" y="7" width="16" height="10" rx="2" />
+      <path d="M21 10v4" />
+      <rect x="5.5" y="9.5" width="11" height="5" rx="1" fill="currentColor" stroke="none" opacity="0.35" />
+    </svg>
+  );
+}
+
+export function WindIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M3 8h10a3 3 0 1 0-3-3" />
+      <path d="M3 14h14a4 4 0 1 1-4 4" />
+      <path d="M3 11h16" />
+    </svg>
+  );
+}
+
+export function SunIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2 12h2M20 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4" />
+    </svg>
+  );
+}
+
+export function CloudIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M7 18h11a4 4 0 0 0 0-8 5.5 5.5 0 0 0-10.6 1.3A3.5 3.5 0 0 0 7 18Z" />
+    </svg>
+  );
+}
+
+export function CloudRainIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M7 14h11a4 4 0 0 0 0-8 5.5 5.5 0 0 0-10.6 1.3A3.5 3.5 0 0 0 7 14Z" />
+      <path d="M11 18v3M14 18v3" />
+    </svg>
+  );
+}
+
+export function CloudSnowIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M7 13h11a4 4 0 0 0 0-8 5.5 5.5 0 0 0-10.6 1.3A3.5 3.5 0 0 0 7 13Z" />
+      <circle cx="11" cy="17" r="0.8" fill="currentColor" stroke="none" />
+      <circle cx="14" cy="17" r="0.8" fill="currentColor" stroke="none" />
+      <circle cx="11" cy="20" r="0.8" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function CloudLightningIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M7 14h11a4 4 0 0 0 0-8 5.5 5.5 0 0 0-10.6 1.3A3.5 3.5 0 0 0 7 14Z" />
+      <path d="M13 16l-2 4h3l-2 4" />
+    </svg>
+  );
+}
+
 export function MusicIcon(props: IconProps) {
   return (
     <svg {...base(props)}>
@@ -245,6 +311,23 @@ export function MusicIcon(props: IconProps) {
       <path d="M9.8 17.5V6.5l10-2v11" />
     </svg>
   );
+}
+
+export type SensorPropertyVariant = "humidity" | "battery" | "temp" | "default";
+
+export function sensorPropertyVariant(instance: string): SensorPropertyVariant {
+  if (instance === "humidity") return "humidity";
+  if (instance === "battery_level") return "battery";
+  if (instance === "temperature") return "temp";
+  return "default";
+}
+
+export function sensorPropertyIcon(instance: string, props: IconProps = {}): JSX.Element {
+  const variant = sensorPropertyVariant(instance);
+  if (variant === "humidity") return <DropletIcon {...props} />;
+  if (variant === "battery") return <BatteryIcon {...props} />;
+  if (variant === "temp") return <ThermometerIcon {...props} />;
+  return <GaugeIcon {...props} />;
 }
 
 /** Maps a Yandex device.type string to a representative icon. */

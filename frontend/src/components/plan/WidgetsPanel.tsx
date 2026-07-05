@@ -11,7 +11,7 @@ import type {
   Widget,
   WidgetSize,
 } from "../../api/types";
-import { GripIcon } from "../icons";
+import { CloudIcon, CloudLightningIcon, CloudRainIcon, CloudSnowIcon, DropletIcon, GripIcon, sensorPropertyIcon, sensorPropertyVariant, SunIcon, WindIcon } from "../icons";
 import SensorChartCard from "./SensorChartCard";
 import StationCard from "./StationCard";
 
@@ -271,15 +271,42 @@ function displayWidgetSize(w: Widget): WidgetSize {
   return normalizeSize(w.size, w.kind);
 }
 
-function nextSize(size: WidgetSize | undefined, kind: Widget["kind"]): WidgetSize {
-  const order = kind === "sensor_chart" ? CHART_SIZE_ORDER : SIZE_ORDER;
-  const current = order.indexOf(normalizeSize(size, kind));
-  return order[(current + 1) % order.length];
+function sizesForKind(kind: Widget["kind"]): WidgetSize[] {
+  return kind === "sensor_chart" ? CHART_SIZE_ORDER : SIZE_ORDER;
+}
+
+/** Sizes that fit at the widget's current grid anchor (L omitted when 4×2 doesn't fit). */
+function availableSizesAtPosition(widgets: Widget[], w: Widget): WidgetSize[] {
+  const { grid_row, grid_col } = w;
+  if (grid_row === undefined || grid_col === undefined) return sizesForKind(w.kind);
+  return sizesForKind(w.kind).filter((size) => canPlaceWidget(widgets, w.id, grid_row, grid_col, size));
+}
+
+function nextSize(widgets: Widget[], w: Widget): WidgetSize {
+  const available = availableSizesAtPosition(widgets, w);
+  if (available.length === 0) return displayWidgetSize(w);
+  const current = displayWidgetSize(w);
+  const idx = available.indexOf(current);
+  const nextIdx = idx >= 0 ? (idx + 1) % available.length : 0;
+  return available[nextIdx];
+}
+
+function sizeCycleTitle(w: Widget, widgets: Widget[]): string {
+  const available = availableSizesAtPosition(widgets, w);
+  const labels: Record<WidgetSize, string> = {
+    s: "S — компактный",
+    m: "M — 2×2",
+    l: "L — 4×2",
+  };
+  const parts = available.map((s) => labels[s]);
+  if (parts.length <= 1) return `Размер: ${parts[0] ?? labels.m}`;
+  return `Размер: ${parts.join(" → ")}`;
 }
 
 // WMO weather codes: what's falling from the sky right now.
 const RAIN_CODES = new Set([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 99]);
 const SNOW_CODES = new Set([71, 73, 75, 77, 85, 86]);
+const THUNDER_CODES = new Set([95, 96, 99]);
 
 // One human line about rain: falling now → expected at HH:mm → none in 24 h.
 function rainSummary(data: WeatherData): string {
@@ -295,12 +322,28 @@ function rainSummary(data: WeatherData): string {
     const at = upcoming.time.slice(11, 16);
     const kind = upcoming.weather_code !== null && SNOW_CODES.has(upcoming.weather_code) ? "Снег" : "Дождь";
     const prob = upcoming.precipitation_probability;
-    return `${kind} ожидается к ${at}${prob ? ` · ${prob}%` : ""}`;
+    return `${kind} ожидается к ${at}${prob != null ? ` · ${prob}% вероятность` : ""}`;
   }
   return "Без осадков в ближайшие 24 ч";
 }
 
-function WeatherWidgetCard({ widget, onRemove }: { widget: WeatherWidget; onRemove: () => void }) {
+function weatherIcon(code: number | null, precipitating: boolean) {
+  if (code !== null && SNOW_CODES.has(code)) return CloudSnowIcon;
+  if (code !== null && THUNDER_CODES.has(code)) return CloudLightningIcon;
+  if (precipitating || (code !== null && RAIN_CODES.has(code))) return CloudRainIcon;
+  if (code === 0 || code === 1) return SunIcon;
+  return CloudIcon;
+}
+
+function WeatherWidgetCard({
+  widget,
+  size,
+  onRemove,
+}: {
+  widget: WeatherWidget;
+  size: WidgetSize;
+  onRemove: () => void;
+}) {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["weather", widget.query],
     queryFn: () => endpoints.getWeather(widget.query),
@@ -311,7 +354,7 @@ function WeatherWidgetCard({ widget, onRemove }: { widget: WeatherWidget; onRemo
   });
 
   return (
-    <div className="widget-card">
+    <div className="widget-card weather-card">
       <div className="widget-card-header">
         <span>{widget.query}</span>
         <button type="button" className="remove-btn" onClick={onRemove} aria-label="Удалить виджет">
@@ -320,14 +363,47 @@ function WeatherWidgetCard({ widget, onRemove }: { widget: WeatherWidget; onRemo
       </div>
       {isLoading && <span className="loading">…</span>}
       {isError && <span className="widget-error">{apiErrorMessage(error)}</span>}
-      {data && (
-        <div className="widget-body">
-          <div className="widget-value">{Math.round(data.temperature ?? 0)}°C</div>
-          <div className="widget-meta">
-            Влажность {data.humidity}% · Ветер {data.wind_speed} км/ч
+      {data && (size === "m" || size === "l") ? (
+        <div className="widget-body weather-m">
+          <div className="weather-m-top">
+            <div className="weather-m-temp">
+              {Math.round(data.temperature ?? 0)}
+              <span className="weather-m-degree">°</span>
+            </div>
+            <div className="weather-m-icon" aria-hidden>
+              {(() => {
+                const code = data.weather_code;
+                const precipitating =
+                  (data.precipitation ?? 0) > 0 || (code !== null && (RAIN_CODES.has(code) || SNOW_CODES.has(code)));
+                const Icon = weatherIcon(code, precipitating);
+                return <Icon />;
+              })()}
+            </div>
           </div>
-          <div className="widget-meta">{rainSummary(data)}</div>
+          <div className="weather-m-bottom">
+            <div className="weather-m-stats">
+              <span className="weather-m-stat">
+                <DropletIcon width={14} height={14} />
+                {data.humidity}%
+              </span>
+              <span className="weather-m-stat">
+                <WindIcon width={14} height={14} />
+                {data.wind_speed} км/ч
+              </span>
+            </div>
+            <div className="weather-m-forecast">{rainSummary(data)}</div>
+          </div>
         </div>
+      ) : (
+        data && (
+          <div className="widget-body">
+            <div className="widget-value">{Math.round(data.temperature ?? 0)}°C</div>
+            <div className="widget-meta">
+              Влажность {data.humidity}% · Ветер {data.wind_speed} км/ч
+            </div>
+            <div className="widget-meta">{rainSummary(data)}</div>
+          </div>
+        )
       )}
     </div>
   );
@@ -335,15 +411,18 @@ function WeatherWidgetCard({ widget, onRemove }: { widget: WeatherWidget; onRemo
 
 function RoomSensorWidgetCard({
   widget,
+  size,
   devices,
   onRemove,
 }: {
   widget: RoomSensorWidget;
+  size: WidgetSize;
   devices: DeviceView[];
   onRemove: () => void;
 }) {
   const device = devices.find((d) => d.id === widget.device_id);
   const prop = device?.properties.find((p) => p.instance === widget.property_instance);
+  const sensorVariant = sensorPropertyVariant(widget.property_instance);
 
   return (
     <div className="widget-card">
@@ -353,10 +432,25 @@ function RoomSensorWidgetCard({
           ×
         </button>
       </div>
-      <div className="widget-body">
-        <div className="widget-value">{prop ? `${prop.value}${prop.unit ?? ""}` : "—"}</div>
-        <div className="widget-meta">{widget.label}</div>
-      </div>
+      {size === "m" || size === "l" ? (
+        <div className={`widget-body sensor-m sensor-m--${sensorVariant}`}>
+          <div className="sensor-m-hero">
+            <div className="sensor-m-icon" aria-hidden>
+              {sensorPropertyIcon(widget.property_instance, { width: 20, height: 20 })}
+            </div>
+            <div className="sensor-m-value">
+              <span className="widget-value">{prop ? String(prop.value) : "—"}</span>
+              {prop?.unit && <span className="sensor-m-unit">{prop.unit}</span>}
+            </div>
+          </div>
+          <div className="sensor-m-label">{widget.label}</div>
+        </div>
+      ) : (
+        <div className="widget-body">
+          <div className="widget-value">{prop ? `${prop.value}${prop.unit ?? ""}` : "—"}</div>
+          <div className="widget-meta">{widget.label}</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -481,8 +575,8 @@ export default function WidgetsPanel({ devices, readOnly = false }: Props) {
   const cycleWidgetSize = (id: string) => {
     const w = widgets.find((x) => x.id === id);
     if (!w || w.grid_row === undefined || w.grid_col === undefined) return;
-    const newSize = nextSize(w.size, w.kind);
-    if (!canPlaceWidget(widgets, id, w.grid_row, w.grid_col, newSize)) return;
+    const newSize = nextSize(widgets, w);
+    if (newSize === displayWidgetSize(w)) return;
     saveWidgets(widgets.map((x) => (x.id === id ? { ...x, size: newSize } : x)));
   };
 
@@ -669,24 +763,20 @@ export default function WidgetsPanel({ devices, readOnly = false }: Props) {
           }}
         >
           {w.kind === "weather" ? (
-            <WeatherWidgetCard widget={w} onRemove={() => removeWidget(w.id)} />
+            <WeatherWidgetCard widget={w} size={size} onRemove={() => removeWidget(w.id)} />
           ) : w.kind === "sensor_chart" ? (
             <SensorChartCard widget={w} onRemove={() => removeWidget(w.id)} />
           ) : w.kind === "station" ? (
-            <StationCard widget={w} onRemove={() => removeWidget(w.id)} />
+            <StationCard widget={w} size={size} onRemove={() => removeWidget(w.id)} />
           ) : (
-            <RoomSensorWidgetCard widget={w} devices={devices} onRemove={() => removeWidget(w.id)} />
+            <RoomSensorWidgetCard widget={w} size={size} devices={devices} onRemove={() => removeWidget(w.id)} />
           )}
           {isEditing && (
           <div className="widget-slot-tools">
             <button
               type="button"
               className="widget-tool"
-              title={
-                w.kind === "sensor_chart"
-                  ? "Размер: M — 2×2, L — 4×2"
-                  : "Размер: S — компактный, M — 2×2, L — 4×2"
-              }
+              title={sizeCycleTitle(w, widgets)}
               onClick={() => cycleWidgetSize(w.id)}
             >
               {SIZE_LABEL[size]}
