@@ -56,6 +56,7 @@ export default function DevicePopover({ device, anchor, onClose }: Props) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["home"] });
       queryClient.invalidateQueries({ queryKey: ["device", device.id] });
+      queryClient.invalidateQueries({ queryKey: ["history"] });
     },
   });
 

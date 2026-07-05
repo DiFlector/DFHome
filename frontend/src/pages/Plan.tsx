@@ -52,11 +52,18 @@ export default function Plan() {
   const [kiosk, setKiosk] = useState(false);
   // Yandex has no push API, so "real time" on the TV is a faster poll of the
   // backend (which proxies to Yandex on every /home call).
-  const { data: home } = useQuery({
+  const { data: home, dataUpdatedAt: homeUpdatedAt } = useQuery({
     queryKey: ["home"],
     queryFn: endpoints.getHome,
-    refetchInterval: kiosk ? 5000 : 15000,
+    refetchInterval: kiosk ? 5000 : 10000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
   });
+
+  useEffect(() => {
+    if (!homeUpdatedAt) return;
+    queryClient.invalidateQueries({ queryKey: ["history"] });
+  }, [homeUpdatedAt, queryClient]);
   const { data: savedPlan, isLoading } = useQuery({ queryKey: ["plan"], queryFn: endpoints.getPlan });
 
   const [editing, setEditing] = useState(false);

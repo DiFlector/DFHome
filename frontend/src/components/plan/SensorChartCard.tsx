@@ -1,6 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { endpoints } from "../../api/client";
 import type { HistoryPoint, MetricThresholds, SensorChartWidget, WidgetSize } from "../../api/types";
+import { useDeviceHistory } from "../../hooks/useDeviceHistory";
 import { useMetricThresholds } from "../../hooks/useMetricThresholds";
 import { sensorPropertyVariant, type SensorPropertyVariant } from "../icons";
 import { humidityWarnBands, metricNormBand, metricStatus, metricStatusColor } from "../../utils/metricStatus";
@@ -127,11 +126,7 @@ export default function SensorChartCard({ widget, size, onRemove }: Props) {
   const windowHours = windowHoursForSize(size);
   const tickStep = tickStepHours(windowHours);
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["history", widget.device_id, windowHours],
-    queryFn: () => endpoints.getHistory(widget.device_id, windowHours),
-    refetchInterval: 5 * 60 * 1000,
-  });
+  const { data, isLoading, isError } = useDeviceHistory(widget.device_id, windowHours);
 
   const instance = widget.property_instance;
   const variant = sensorPropertyVariant(instance);
@@ -139,7 +134,7 @@ export default function SensorChartCard({ widget, size, onRemove }: Props) {
 
   const nowSec = Date.now() / 1000;
   const start = nowSec - windowHours * 3600;
-  const points = (data?.[instance] ?? []).filter((p) => p.ts >= start);
+  const points = (data?.series[instance] ?? []).filter((p) => p.ts >= start);
 
   const plotW = W - PL - PR;
   const plotH = H - PT - PB;
@@ -166,7 +161,8 @@ export default function SensorChartCard({ widget, size, onRemove }: Props) {
   );
 
   const yTicks = [hi, lo];
-  const last = points[points.length - 1]?.value;
+  const latest = data?.latest[instance]?.value;
+  const last = latest ?? points[points.length - 1]?.value;
   const unit = widget.unit || (variant === "humidity" ? "%" : variant === "temp" ? "°C" : "");
   const valueStatus = last !== undefined ? metricStatus(variant, last, thresholds) : "ok";
   const strokeColor = metricStatusColor(valueStatus);

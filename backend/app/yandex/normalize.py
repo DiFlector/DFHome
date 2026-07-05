@@ -206,6 +206,7 @@ def normalize_color_setting(cap: dict) -> list[ControlSpec]:
                 label=_COLOR_LABELS.get(color_model, "Цвет"),
                 value=value if value is not None else (_DEFAULT_HSV if color_model == "hsv" else 0xFFFFFF),
                 color_model=color_model,
+                color_active=active_instance == color_model,
                 retrievable=retrievable,
             )
         )
@@ -223,6 +224,7 @@ def normalize_color_setting(cap: dict) -> list[ControlSpec]:
                 min=temperature_range.get("min"),
                 max=temperature_range.get("max"),
                 color_model="temperature_k",
+                color_active=active_instance == "temperature_k",
                 retrievable=retrievable,
             )
         )
@@ -242,6 +244,7 @@ def normalize_color_setting(cap: dict) -> list[ControlSpec]:
             label=_COLOR_LABELS.get(fallback_instance, "Цвет"),
             value=active_value,
             color_model=fallback_instance,
+            color_active=True,
             retrievable=retrievable,
         )
     ]

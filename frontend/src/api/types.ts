@@ -12,6 +12,7 @@ export interface ControlSpec {
   unit?: string | null;
   options?: string[] | null;
   color_model?: string | null;
+  color_active?: boolean | null;
   retrievable: boolean;
 }
 
@@ -248,7 +249,10 @@ export interface HistoryPoint {
   value: number;
 }
 
-export type DeviceHistory = Record<string, HistoryPoint[]>;
+export interface DeviceHistory {
+  series: Record<string, HistoryPoint[]>;
+  latest: Record<string, HistoryPoint>;
+}
 
 export interface WeatherHourly {
   time: string; // local time of the city, "YYYY-MM-DDTHH:mm"

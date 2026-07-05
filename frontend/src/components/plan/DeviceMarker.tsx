@@ -16,19 +16,37 @@ interface Props {
   onMakeOutline?: () => void;
 }
 
-// A default hsv control (see backend normalize.py's normalize_color_setting)
-// is always fully desaturated {s: 0}; real saturation only appears when hsv
-// is genuinely the active color mode. That lets us pick the right glow
-// source without the backend needing to flag "which mode is active".
+function rgbIntToRgb(n: number): { r: number; g: number; b: number } {
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+/** Glow color from the color mode Yandex reports as active (state.instance). */
 export function resolveGlowColor(device: DeviceView): { r: number; g: number; b: number } | null {
-  const hsvControl = device.controls.find((c) => c.color_model === "hsv");
-  const hsv = hsvControl?.value as HsvValue | undefined;
-  if (hsv && hsv.s > 0) return hsvToRgb(hsv);
+  const colorControls = device.controls.filter((c) => c.kind === "color");
+  const active =
+    colorControls.find((c) => c.color_active) ??
+    colorControls.find((c) => c.color_model === "hsv" || c.color_model === "rgb") ??
+    colorControls[0];
 
-  const tempControl = device.controls.find((c) => c.color_model === "temperature_k");
-  if (tempControl && typeof tempControl.value === "number") return kelvinToRgb(tempControl.value);
+  if (active?.color_model === "hsv") {
+    const hsv = active.value as HsvValue | undefined;
+    if (hsv && hsv.s > 0) return hsvToRgb(hsv);
+  }
 
-  if (hsvControl || device.type.includes("light")) return { r: 255, g: 214, b: 140 };
+  if (active?.color_model === "rgb" && typeof active.value === "number") {
+    return rgbIntToRgb(active.value);
+  }
+
+  const tempControl = colorControls.find((c) => c.color_model === "temperature_k");
+  if (tempControl?.color_active && typeof tempControl.value === "number") {
+    return kelvinToRgb(tempControl.value);
+  }
+
+  if (colorControls.some((c) => c.color_model === "temperature_k") && typeof tempControl?.value === "number") {
+    return kelvinToRgb(tempControl.value);
+  }
+
+  if (colorControls.length > 0 || device.type.includes("light")) return { r: 255, g: 214, b: 140 };
   return null;
 }
 

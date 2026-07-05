@@ -29,6 +29,7 @@ import {
 import SensorChartCard from "./SensorChartCard";
 import { metricNormBand, metricStatus } from "../../utils/metricStatus";
 import { useMetricThresholds } from "../../hooks/useMetricThresholds";
+import { useSensorLatest } from "../../hooks/useDeviceHistory";
 import StationCard from "./StationCard";
 
 interface Props {
@@ -475,7 +476,8 @@ function WeatherWidgetCard({
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["weather", widget.query],
     queryFn: () => endpoints.getWeather(widget.query),
-    refetchInterval: 15 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
+    refetchIntervalInBackground: true,
     // The backend already caches and retries; don't pile more requests on a
     // struggling upstream (each failure used to trigger 3 client retries).
     retry: 1,
@@ -546,22 +548,21 @@ function WeatherWidgetCard({
 function RoomSensorWidgetCard({
   widget,
   size,
-  devices,
   onRemove,
 }: {
   widget: RoomSensorWidget;
   size: WidgetSize;
-  devices: DeviceView[];
   onRemove: () => void;
 }) {
   const thresholds = useMetricThresholds();
-  const device = devices.find((d) => d.id === widget.device_id);
-  const prop = device?.properties.find((p) => p.instance === widget.property_instance);
+  const { value: liveValue, isLoading } = useSensorLatest(widget.device_id, widget.property_instance);
   const sensorVariant = sensorPropertyVariant(widget.property_instance);
-  const numValue =
-    typeof prop?.value === "number" ? prop.value : prop?.value != null ? Number(prop.value) : NaN;
+  const numValue = liveValue ?? NaN;
   const valueStatus = Number.isFinite(numValue) ? metricStatus(sensorVariant, numValue, thresholds) : "ok";
   const norm = metricNormBand(sensorVariant, thresholds);
+  const unit =
+    sensorVariant === "temp" ? "°C" : sensorVariant === "humidity" ? "%" : sensorVariant === "battery" ? "%" : "";
+  const displayValue = isLoading && liveValue === undefined ? "…" : Number.isFinite(numValue) ? String(numValue) : "—";
 
   return (
     <div className="widget-card">
@@ -575,8 +576,8 @@ function RoomSensorWidgetCard({
         <div className={`widget-body sensor-m sensor-m--${sensorVariant} metric-${valueStatus}`}>
           <div className="sensor-m-top">
             <div className="sensor-m-value">
-              <span className="widget-value">{prop ? String(prop.value) : "—"}</span>
-              {prop?.unit && <span className="sensor-m-unit">{prop.unit}</span>}
+              <span className="widget-value">{displayValue}</span>
+              {unit && <span className="sensor-m-unit">{unit}</span>}
             </div>
             <div className="sensor-m-icon" aria-hidden>
               {sensorPropertyIcon(widget.property_instance)}
@@ -597,8 +598,8 @@ function RoomSensorWidgetCard({
             {sensorPropertyIcon(widget.property_instance, { width: 20, height: 20 })}
           </div>
           <div className="sensor-s-value">
-            <span className="widget-value">{prop ? String(prop.value) : "—"}</span>
-            {prop?.unit && <span className="sensor-s-unit">{prop.unit}</span>}
+            <span className="widget-value">{displayValue}</span>
+            {unit && <span className="sensor-s-unit">{unit}</span>}
           </div>
         </div>
       )}
@@ -1201,7 +1202,7 @@ export default function WidgetsPanel({ devices, readOnly = false }: Props) {
           ) : w.kind === "station" ? (
             <StationCard widget={w} size={size} onRemove={() => removeWidget(w.id)} />
           ) : (
-            <RoomSensorWidgetCard widget={w} size={size} devices={devices} onRemove={() => removeWidget(w.id)} />
+            <RoomSensorWidgetCard widget={w} size={size} onRemove={() => removeWidget(w.id)} />
           )}
           {isEditing && (
           <div className="widget-slot-tools">

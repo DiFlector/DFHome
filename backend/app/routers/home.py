@@ -2,7 +2,7 @@ import json
 
 from fastapi import APIRouter
 
-from app import storage
+from app import history, storage
 from app.models import HomeView, RoomView, ScenarioSummary
 from app.yandex.normalize import normalize_device
 from app.yandex.official import OfficialClient
@@ -27,6 +27,7 @@ async def _ordered_room_ids(seen_ids: list[str]) -> list[str]:
 async def get_home() -> HomeView:
     client = await OfficialClient.from_storage()
     data = await client.get_user_info()
+    await history.ingest_user_info(data)
 
     room_by_id: dict[str, dict] = {r["id"]: r for r in data.get("rooms", [])}
     rooms: dict[str, RoomView] = {

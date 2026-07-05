@@ -115,6 +115,7 @@ class ControlSpec(BaseModel):
     options: list[str] | None = None
     # color
     color_model: str | None = None  # "hsv" | "rgb" | "temperature_k"
+    color_active: bool | None = None  # which color mode Yandex reports in state.instance
     retrievable: bool = True
 
 
