@@ -152,6 +152,8 @@ export interface WeatherWidget {
   kind: "weather";
   query: string;
   size?: WidgetSize;
+  grid_row?: number;
+  grid_col?: number;
 }
 
 export interface RoomSensorWidget {
@@ -162,6 +164,8 @@ export interface RoomSensorWidget {
   property_instance: string;
   label: string;
   size?: WidgetSize;
+  grid_row?: number;
+  grid_col?: number;
 }
 
 export interface SensorChartWidget {
@@ -173,6 +177,8 @@ export interface SensorChartWidget {
   label: string;
   unit?: string | null;
   size?: WidgetSize;
+  grid_row?: number;
+  grid_col?: number;
 }
 
 export interface StationWidget {
@@ -181,6 +187,8 @@ export interface StationWidget {
   device_id: string;
   device_name: string;
   size?: WidgetSize;
+  grid_row?: number;
+  grid_col?: number;
 }
 
 export type Widget = WeatherWidget | RoomSensorWidget | SensorChartWidget | StationWidget;

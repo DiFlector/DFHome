@@ -1631,12 +1631,33 @@ body.kiosk-mode .plan-toolbar h2 {
 .widgets-grid-cell {
   min-width: 0;
   min-height: 0;
+  z-index: 0;
   border: 1px solid rgba(178, 190, 195, 0.16);
   border-radius: var(--radius-sm);
 }
 
+.widgets-grid-cell.is-under-widget {
+  pointer-events: none;
+  border-color: transparent;
+}
+
+.widgets-grid-drop-preview {
+  pointer-events: none;
+  z-index: 2;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.widgets-grid-drop-preview.is-invalid {
+  background: color-mix(in srgb, var(--c-pink-glamour) 12%, transparent);
+  outline-color: var(--danger);
+}
+
 .widget-slot {
   position: relative;
+  z-index: 1;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -1710,6 +1731,7 @@ body.kiosk-mode .plan-toolbar h2 {
 
 .widget-slot.dragging {
   opacity: 0.45;
+  pointer-events: none;
 }
 
 .widget-slot.drag-over > .widget-card {
