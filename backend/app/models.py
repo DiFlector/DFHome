@@ -1,7 +1,51 @@
 """Pydantic schemas shared between routers and the yandex client layer."""
 from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
+
+
+# ---------------------------------------------------------------------------
+# Metric thresholds (comfort bands for sensors / weather)
+# ---------------------------------------------------------------------------
+
+class TempThresholds(BaseModel):
+    norm_lo: float = 20
+    norm_hi: float = 24
+
+    @model_validator(mode="after")
+    def check_range(self) -> "TempThresholds":
+        if self.norm_lo >= self.norm_hi:
+            raise ValueError("temp.norm_lo must be less than temp.norm_hi")
+        return self
+
+
+class HumidityThresholds(BaseModel):
+    norm_lo: float = 40
+    norm_hi: float = 60
+    margin: float = Field(default=5, ge=0, description="Yellow zone width outside norm band")
+
+    @model_validator(mode="after")
+    def check_range(self) -> "HumidityThresholds":
+        if self.norm_lo >= self.norm_hi:
+            raise ValueError("humidity.norm_lo must be less than humidity.norm_hi")
+        return self
+
+
+class BatteryThresholds(BaseModel):
+    good_min: float = Field(default=60, ge=0, le=100)
+    ok_min: float = Field(default=20, ge=0, le=100)
+
+    @model_validator(mode="after")
+    def check_range(self) -> "BatteryThresholds":
+        if self.ok_min >= self.good_min:
+            raise ValueError("battery.ok_min must be less than battery.good_min")
+        return self
+
+
+class MetricThresholds(BaseModel):
+    temp: TempThresholds = Field(default_factory=TempThresholds)
+    humidity: HumidityThresholds = Field(default_factory=HumidityThresholds)
+    battery: BatteryThresholds = Field(default_factory=BatteryThresholds)
 
 
 # ---------------------------------------------------------------------------
@@ -15,6 +59,7 @@ class SettingsView(BaseModel):
     has_quasar_x_token: bool
     oauth_token_preview: str | None = None
     quasar_x_token_preview: str | None = None
+    metric_thresholds: MetricThresholds = Field(default_factory=MetricThresholds)
 
 
 class SettingsUpdate(BaseModel):
@@ -22,6 +67,7 @@ class SettingsUpdate(BaseModel):
     # Advanced/fallback: paste an x_token obtained elsewhere directly. Most
     # users should use POST /settings/quasar-login instead (see below).
     quasar_x_token: str | None = None
+    metric_thresholds: MetricThresholds | None = None
 
 
 class QuasarLoginRequest(BaseModel):

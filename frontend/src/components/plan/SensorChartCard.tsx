@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { endpoints } from "../../api/client";
-import type { HistoryPoint, SensorChartWidget, WidgetSize } from "../../api/types";
+import type { HistoryPoint, MetricThresholds, SensorChartWidget, WidgetSize } from "../../api/types";
+import { useMetricThresholds } from "../../hooks/useMetricThresholds";
 import { sensorPropertyVariant, type SensorPropertyVariant } from "../icons";
-import { metricNormBand, metricStatus, metricStatusColor } from "../../utils/metricStatus";
+import { humidityWarnBands, metricNormBand, metricStatus, metricStatusColor } from "../../utils/metricStatus";
 
 interface Props {
   widget: SensorChartWidget;
@@ -29,12 +30,12 @@ function fmtHoursShort(n: number): string {
   return `${n} ч.`;
 }
 
-function domain(points: HistoryPoint[], variant: SensorPropertyVariant): [number, number] {
+function domain(points: HistoryPoint[], variant: SensorPropertyVariant, thresholds: MetricThresholds): [number, number] {
   const values = points.map((p) => p.value);
   const dataLo = Math.min(...values);
   const dataHi = Math.max(...values);
   const spread = dataHi - dataLo;
-  const norm = metricNormBand(variant);
+  const norm = metricNormBand(variant, thresholds);
 
   let lo: number;
   let hi: number;
@@ -66,12 +67,26 @@ function domain(points: HistoryPoint[], variant: SensorPropertyVariant): [number
   }
 
   if (norm) {
-    const edge = variant === "humidity" ? 2 : variant === "temp" ? 0.5 : 0;
+    const edge =
+      variant === "humidity"
+        ? thresholds.humidity.margin + 1
+        : variant === "temp"
+          ? 0.5
+          : 0;
     lo = Math.min(lo, norm.lo - edge);
     hi = Math.max(hi, norm.hi + edge);
   }
 
   return [lo, hi];
+}
+
+function zoneRect(lo: number, hi: number, bandLo: number, bandHi: number, y: (v: number) => number) {
+  if (hi <= bandLo || lo >= bandHi) return null;
+  const top = y(Math.min(hi, bandHi));
+  const bottom = y(Math.max(lo, bandLo));
+  const height = Math.max(0, bottom - top);
+  if (height <= 0) return null;
+  return { top, height };
 }
 
 function plotValue(v: number, lo: number, hi: number, variant: SensorPropertyVariant): number {
@@ -108,6 +123,7 @@ function metaBlock(label: string, normLabel: string | null, windowHours: number,
 }
 
 export default function SensorChartCard({ widget, size, onRemove }: Props) {
+  const thresholds = useMetricThresholds();
   const windowHours = windowHoursForSize(size);
   const tickStep = tickStepHours(windowHours);
 
@@ -119,7 +135,7 @@ export default function SensorChartCard({ widget, size, onRemove }: Props) {
 
   const instance = widget.property_instance;
   const variant = sensorPropertyVariant(instance);
-  const norm = metricNormBand(variant);
+  const norm = metricNormBand(variant, thresholds);
 
   const nowSec = Date.now() / 1000;
   const start = nowSec - windowHours * 3600;
@@ -132,7 +148,7 @@ export default function SensorChartCard({ widget, size, onRemove }: Props) {
   const x = (ts: number) => PL + ((ts - start) / (windowHours * 3600)) * plotW;
   const xPct = (ts: number) => `${(((ts - start) / (windowHours * 3600)) * 100).toFixed(2)}%`;
 
-  const [lo, hi] = points.length ? domain(points, variant) : [0, 1];
+  const [lo, hi] = points.length ? domain(points, variant, thresholds) : [0, 1];
   const y = (v: number) => PT + (1 - (plotValue(v, lo, hi, variant) - lo) / (hi - lo || 1)) * plotH;
 
   const coords = points.map((p) => ({ ...p, cx: x(p.ts), cy: y(p.value) }));
@@ -152,13 +168,22 @@ export default function SensorChartCard({ widget, size, onRemove }: Props) {
   const yTicks = [hi, lo];
   const last = points[points.length - 1]?.value;
   const unit = widget.unit || (variant === "humidity" ? "%" : variant === "temp" ? "°C" : "");
-  const valueStatus = last !== undefined ? metricStatus(variant, last) : "ok";
+  const valueStatus = last !== undefined ? metricStatus(variant, last, thresholds) : "ok";
   const strokeColor = metricStatusColor(valueStatus);
 
   const showComfortZone = norm !== null && lo < norm.hi && hi > norm.lo;
   const comfortTop = norm ? y(Math.min(hi, norm.hi)) : 0;
   const comfortBottom = norm ? y(Math.max(lo, norm.lo)) : 0;
   const comfortHeight = Math.max(0, comfortBottom - comfortTop);
+  const humidityWarnRects =
+    variant === "humidity"
+      ? humidityWarnBands(thresholds)
+          .map((band, i) => {
+            const rect = zoneRect(lo, hi, band.lo, band.hi, y);
+            return rect ? { key: i, ...rect } : null;
+          })
+          .filter((z): z is { key: number; top: number; height: number } => z !== null)
+      : [];
 
   const valueBlock = (
     <div className="sensor-chart-current">
@@ -192,6 +217,18 @@ export default function SensorChartCard({ widget, size, onRemove }: Props) {
             role="img"
             aria-label={`График: ${widget.label}`}
           >
+            {humidityWarnRects.map((zone) => (
+              <rect
+                key={zone.key}
+                x={PL}
+                y={zone.top}
+                width={plotW}
+                height={zone.height}
+                className="chart-warn-zone"
+                rx={2}
+              />
+            ))}
+
             {showComfortZone && norm && (
               <>
                 <rect x={PL} y={comfortTop} width={plotW} height={comfortHeight} className="chart-comfort-zone" rx={2} />

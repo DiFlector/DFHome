@@ -8,6 +8,7 @@ import DeviceMarker from "../components/plan/DeviceMarker";
 import DeviceOutline from "../components/plan/DeviceOutline";
 import RoomBox, { roomComfort } from "../components/plan/RoomBox";
 import WidgetsPanel from "../components/plan/WidgetsPanel";
+import { useMetricThresholds } from "../hooks/useMetricThresholds";
 import { useStoredFlag } from "../hooks/useStoredFlag";
 
 const EMPTY_LAYOUT: PlanLayout = { rooms: [], devices: [] };
@@ -47,6 +48,7 @@ function KioskClock() {
 
 export default function Plan() {
   const queryClient = useQueryClient();
+  const metricThresholds = useMetricThresholds();
   const [kiosk, setKiosk] = useState(false);
   // Yandex has no push API, so "real time" on the TV is a faster poll of the
   // backend (which proxies to Yandex on every /home call).
@@ -427,7 +429,7 @@ export default function Plan() {
                   room={room}
                   roomName={roomNameById.get(room.room_id) ?? room.room_id}
                   editable={editing}
-                  comfort={showComfort ? roomComfort(roomDevicesById.get(room.room_id) ?? []) : null}
+                  comfort={showComfort ? roomComfort(roomDevicesById.get(room.room_id) ?? [], metricThresholds) : null}
                   onChange={updateRoom}
                   onRemove={() => removeRoom(room.room_id)}
                 />

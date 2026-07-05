@@ -1,6 +1,7 @@
 import { useDrag } from "../../hooks/useDrag";
 import type { DeviceView, PlanRoom } from "../../api/types";
-import { roomComfortLevel, type MetricStatus } from "../../utils/metricStatus";
+import { DEFAULT_METRIC_THRESHOLDS, roomComfortLevel, type MetricStatus } from "../../utils/metricStatus";
+import type { MetricThresholds } from "../../api/types";
 
 export type ComfortLevel = MetricStatus;
 
@@ -11,7 +12,7 @@ export interface RoomComfort {
 
 // 0 = comfortable, 1 = borderline, 2 = uncomfortable.
 /** Room comfort from its sensors; worst metric wins. null when no numeric sensors. */
-export function roomComfort(devices: DeviceView[]): RoomComfort | null {
+export function roomComfort(devices: DeviceView[], thresholds: MetricThresholds = DEFAULT_METRIC_THRESHOLDS): RoomComfort | null {
   const temps: number[] = [];
   const hums: number[] = [];
   for (const d of devices) {
@@ -32,7 +33,7 @@ export function roomComfort(devices: DeviceView[]): RoomComfort | null {
     const h = hums.reduce((s, x) => s + x, 0) / hums.length;
     parts.push(`${Math.round(h)}%`);
   }
-  return { level: roomComfortLevel(temps, hums), text: parts.join(" · ") };
+  return { level: roomComfortLevel(temps, hums, thresholds), text: parts.join(" · ") };
 }
 
 interface Props {

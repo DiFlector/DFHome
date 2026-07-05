@@ -58,11 +58,35 @@ export interface SettingsView {
   has_quasar_x_token: boolean;
   oauth_token_preview?: string | null;
   quasar_x_token_preview?: string | null;
+  metric_thresholds: MetricThresholds;
+}
+
+export interface TempThresholds {
+  norm_lo: number;
+  norm_hi: number;
+}
+
+export interface HumidityThresholds {
+  norm_lo: number;
+  norm_hi: number;
+  margin: number;
+}
+
+export interface BatteryThresholds {
+  good_min: number;
+  ok_min: number;
+}
+
+export interface MetricThresholds {
+  temp: TempThresholds;
+  humidity: HumidityThresholds;
+  battery: BatteryThresholds;
 }
 
 export interface SettingsUpdate {
   yandex_oauth_token?: string | null;
   quasar_x_token?: string | null;
+  metric_thresholds?: MetricThresholds;
 }
 
 export interface QuasarLoginResult {

@@ -14,6 +14,7 @@ import type {
 import { CloudIcon, CloudLightningIcon, CloudRainIcon, CloudSnowIcon, DropletIcon, GripIcon, sensorPropertyIcon, sensorPropertyVariant, SunIcon, WindIcon } from "../icons";
 import SensorChartCard from "./SensorChartCard";
 import { metricNormBand, metricStatus } from "../../utils/metricStatus";
+import { useMetricThresholds } from "../../hooks/useMetricThresholds";
 import StationCard from "./StationCard";
 
 interface Props {
@@ -345,6 +346,7 @@ function WeatherWidgetCard({
   size: WidgetSize;
   onRemove: () => void;
 }) {
+  const thresholds = useMetricThresholds();
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["weather", widget.query],
     queryFn: () => endpoints.getWeather(widget.query),
@@ -367,7 +369,7 @@ function WeatherWidgetCard({
       {data && (size === "m" || size === "l") ? (
         <div className="widget-body weather-m">
           <div className="weather-m-top">
-            <div className={`weather-m-temp metric-${metricStatus("temp", data.temperature ?? 0)}`}>
+            <div className={`weather-m-temp metric-${metricStatus("temp", data.temperature ?? 0, thresholds)}`}>
               {Math.round(data.temperature ?? 0)}
               <span className="weather-m-degree">°</span>
             </div>
@@ -383,7 +385,7 @@ function WeatherWidgetCard({
           </div>
           <div className="weather-m-bottom">
             <div className="weather-m-stats">
-              <span className={`weather-m-stat metric-${metricStatus("humidity", data.humidity ?? 0)}`}>
+              <span className={`weather-m-stat metric-${metricStatus("humidity", data.humidity ?? 0, thresholds)}`}>
                 <DropletIcon width={14} height={14} />
                 {data.humidity}%
               </span>
@@ -398,11 +400,11 @@ function WeatherWidgetCard({
       ) : (
         data && (
           <div className="widget-body weather-s">
-            <div className={`widget-value metric-${metricStatus("temp", data.temperature ?? 0)}`}>
+            <div className={`widget-value metric-${metricStatus("temp", data.temperature ?? 0, thresholds)}`}>
               {Math.round(data.temperature ?? 0)}°C
             </div>
             <div className="widget-meta">
-              <span className={`metric-${metricStatus("humidity", data.humidity ?? 0)}`}>
+              <span className={`metric-${metricStatus("humidity", data.humidity ?? 0, thresholds)}`}>
                 Влажность {data.humidity}%
               </span>
               {" · "}
@@ -427,13 +429,14 @@ function RoomSensorWidgetCard({
   devices: DeviceView[];
   onRemove: () => void;
 }) {
+  const thresholds = useMetricThresholds();
   const device = devices.find((d) => d.id === widget.device_id);
   const prop = device?.properties.find((p) => p.instance === widget.property_instance);
   const sensorVariant = sensorPropertyVariant(widget.property_instance);
   const numValue =
     typeof prop?.value === "number" ? prop.value : prop?.value != null ? Number(prop.value) : NaN;
-  const valueStatus = Number.isFinite(numValue) ? metricStatus(sensorVariant, numValue) : "ok";
-  const norm = metricNormBand(sensorVariant);
+  const valueStatus = Number.isFinite(numValue) ? metricStatus(sensorVariant, numValue, thresholds) : "ok";
+  const norm = metricNormBand(sensorVariant, thresholds);
 
   return (
     <div className="widget-card">

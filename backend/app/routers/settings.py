@@ -3,6 +3,7 @@ import json
 from fastapi import APIRouter, Body, HTTPException
 
 from app import storage
+from app.metric_thresholds import load_metric_thresholds
 from app.models import (
     ConnectionTestResult,
     QuasarLoginRequest,
@@ -34,18 +35,27 @@ async def get_settings() -> SettingsView:
         has_quasar_x_token=bool(values.get("quasar_x_token")),
         oauth_token_preview=_preview(values.get("yandex_oauth_token")),
         quasar_x_token_preview=_preview(values.get("quasar_x_token")),
+        metric_thresholds=await load_metric_thresholds(),
     )
 
 
 @router.put("", response_model=SettingsView)
 async def update_settings(update: SettingsUpdate) -> SettingsView:
-    await storage.set_values(update.model_dump(exclude_unset=True))
+    raw = update.model_dump(exclude_unset=True)
+    storage_updates: dict[str, str | None] = {}
+    for key in ("yandex_oauth_token", "quasar_x_token"):
+        if key in raw:
+            storage_updates[key] = raw[key]
+    if "metric_thresholds" in raw and raw["metric_thresholds"] is not None:
+        storage_updates["metric_thresholds"] = json.dumps(raw["metric_thresholds"])
+    if storage_updates:
+        await storage.set_values(storage_updates)
     return await get_settings()
 
 
 # Keys whose stored value is itself a JSON document — exported as nested
 # objects (readable file) and re-serialized on import.
-_JSON_KEYS = ("room_order", "plan_layout", "widgets")
+_JSON_KEYS = ("room_order", "plan_layout", "widgets", "metric_thresholds")
 
 
 @router.get("/export")
