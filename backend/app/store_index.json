@@ -1,0 +1,74 @@
+{
+  "integrations": [
+    {
+      "domain": "demo",
+      "name": "Демо",
+      "description": "Встроенный набор виртуальных устройств, комнат, виджетов и плана дома. Установите, чтобы увидеть DFHome во всей красе без реального оборудования.",
+      "category": "service",
+      "version": "1.0.0",
+      "author": "DFHome",
+      "protocols": [],
+      "source": "local:demo"
+    },
+    {
+      "domain": "yandex",
+      "name": "Яндекс Умный дом",
+      "description": "Устройства и медиаплееры Яндекса. Управление светом, розетками, колонками.",
+      "category": "service",
+      "version": "0.3.1",
+      "author": "DFHome",
+      "protocols": ["cloud"],
+      "source": "local:yandex"
+    },
+    {
+      "domain": "zigbee",
+      "name": "Zigbee (zigpy/ZHA)",
+      "description": "Локальный Zigbee через USB-координатор. Датчики, лампы, розетки, кнопки.",
+      "category": "protocol",
+      "version": "0.5.0",
+      "author": "DFHome",
+      "protocols": ["zigbee"],
+      "source": "local:zigbee"
+    },
+    {
+      "domain": "bluetooth",
+      "name": "Bluetooth LE",
+      "description": "Обнаружение и опрос BLE-устройств через локальный адаптер.",
+      "category": "protocol",
+      "version": "0.2.0",
+      "author": "DFHome",
+      "protocols": ["bluetooth"],
+      "source": "local:bluetooth"
+    },
+    {
+      "domain": "matter",
+      "name": "Matter / Thread",
+      "description": "Устройства Matter через python-matter-server.",
+      "category": "protocol",
+      "version": "0.1.0",
+      "author": "DFHome",
+      "protocols": ["matter"],
+      "source": "local:matter"
+    },
+    {
+      "domain": "weather",
+      "name": "Погода",
+      "description": "Прогноз погоды по региону как источник данных для виджетов.",
+      "category": "weather",
+      "version": "1.0.0",
+      "author": "DFHome",
+      "protocols": ["cloud"],
+      "source": "local:weather"
+    },
+    {
+      "domain": "mqtt",
+      "name": "MQTT",
+      "description": "Подключение устройств и мостов через MQTT-брокер.",
+      "category": "service",
+      "version": "0.4.2",
+      "author": "Community",
+      "protocols": ["wifi"],
+      "source": "local:mqtt"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "domain": "zigbee",
+  "name": "Zigbee (zigpy/ZHA)",
+  "version": "0.5.0",
+  "iot_class": "local_push",
+  "protocols": ["zigbee"],
+  "requirements": [],
+  "dependencies": [],
+  "config_schema": {
+    "port": { "type": "string", "required": true }
+  }
+}

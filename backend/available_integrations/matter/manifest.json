@@ -1,0 +1,10 @@
+{
+  "domain": "matter",
+  "name": "Matter / Thread",
+  "version": "0.1.0",
+  "iot_class": "local_push",
+  "protocols": ["matter"],
+  "requirements": [],
+  "dependencies": [],
+  "config_schema": {}
+}

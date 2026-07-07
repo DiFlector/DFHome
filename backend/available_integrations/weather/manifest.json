@@ -1,0 +1,12 @@
+{
+  "domain": "weather",
+  "name": "Погода",
+  "version": "1.0.0",
+  "iot_class": "cloud_polling",
+  "protocols": ["cloud"],
+  "requirements": [],
+  "dependencies": [],
+  "config_schema": {
+    "location": { "type": "string", "required": false }
+  }
+}

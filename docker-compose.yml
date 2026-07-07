@@ -1,0 +1,24 @@
+services:
+  backend:
+    build: ./backend
+    volumes:
+      - dfhome-data:/data
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "1285:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  dfhome-data:
+
+networks:
+  # Smaller MTU than the 1500 default: on TrueNAS SCALE bridges a full-size
+  # TLS ServerHello can silently vanish (PMTU blackhole).
+  default:
+    driver_opts:
+      com.docker.network.driver.mtu: "1400"

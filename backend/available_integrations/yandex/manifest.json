@@ -1,0 +1,12 @@
+{
+  "domain": "yandex",
+  "name": "Яндекс Умный дом",
+  "version": "0.3.1",
+  "iot_class": "cloud_push",
+  "protocols": ["cloud"],
+  "requirements": [],
+  "dependencies": [],
+  "config_schema": {
+    "oauth_token": { "type": "string", "secret": true, "required": false }
+  }
+}
